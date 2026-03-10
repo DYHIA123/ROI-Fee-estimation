@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amazon PL Opportunity Calculator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);min-height:100vh;padding:20px;color:#fff}
+        .container{max-width:1500px;margin:0 auto}
+        .header{text-align:center;padding:30px;background:linear-gradient(135deg,#ff9900 0%,#ffad33 100%);border-radius:15px;margin-bottom:30px;box-shadow:0 10px 30px rgba(255,153,0,0.3)}
+        .header h1{color:#232f3e;font-size:2.5em;margin-bottom:10px}
+        .header p{color:#232f3e;font-size:1.1em}
+        .card{background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);border-radius:15px;padding:25px;margin-bottom:20px;border:1px solid rgba(255,255,255,0.2)}
+        .card h2{color:#ff9900;margin-bottom:20px;padding-bottom:10px;border-bottom:2px solid #ff9900}
+        .input-group{margin-bottom:20px}
+        .input-group label{display:block;margin-bottom:8px;font-weight:600;color:#ffcc80}
+        .input-group input[type="text"],.input-group input[type="number"],.input-group textarea{width:100%;padding:12px 15px;border:2px solid rgba(255,153,0,0.3);border-radius:8px;background:rgba(0,0,0,0.3);color:#fff;font-size:16px;transition:all 0.3s ease;font-family:inherit}
+        .input-group textarea{min-height:60px;resize:vertical}
+        .input-group input:focus,.input-group textarea:focus{outline:none;border-color:#ff9900;box-shadow:0 0 15px rgba(255,153,0,0.3)}
+        .file-upload-container{margin-bottom:15px}
+        .file-upload-label{display:block;border:2px dashed rgba(255,153,0,0.5);border-radius:10px;padding:25px;text-align:center;cursor:pointer;transition:all 0.3s ease}
+        .file-upload-label:hover{border-color:#ff9900;background:rgba(255,153,0,0.1)}
+        .file-upload-label.uploaded{border-color:#4caf50;background:rgba(76,175,80,0.1)}
+        .file-upload-label.optional{border-color:rgba(100,181,246,0.5)}
+        .file-upload-label.optional:hover{border-color:#64b5f6;background:rgba(33,150,243,0.1)}
+        .file-upload-container input[type="file"]{display:none}
+        .file-upload-label .icon{font-size:36px;margin-bottom:8px}
+        .file-status{margin-top:8px;color:#ff9900;font-size:0.9em}
+        .file-status.success{color:#4caf50}
+        .optional-badge,.required-badge,.data-loaded-badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:0.75em;margin-left:10px;font-weight:normal}
+        .optional-badge{background:rgba(33,150,243,0.3);color:#64b5f6}
+        .required-badge{background:rgba(255,153,0,0.3);color:#ffcc80}
+        .data-loaded-badge{background:rgba(76,175,80,0.3);color:#81c784}
+        .btn{background:linear-gradient(135deg,#ff9900 0%,#ffad33 100%);color:#232f3e;border:none;padding:15px 40px;font-size:18px;font-weight:700;border-radius:8px;cursor:pointer;transition:all 0.3s ease;display:block;width:100%;margin-top:20px}
+        .btn:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(255,153,0,0.4)}
+        .btn:disabled{background:#666;cursor:not-allowed;transform:none;box-shadow:none}
+        .results-section{display:none}
+        .results-section.visible{display:block}
+        .summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:15px;margin-bottom:25px}
+        .summary-card{background:linear-gradient(135deg,rgba(255,153,0,0.2) 0%,rgba(255,153,0,0.1) 100%);border-radius:12px;padding:18px;text-align:center;border:1px solid rgba(255,153,0,0.3)}
+        .summary-card.highlight{background:linear-gradient(135deg,#ff9900 0%,#ffad33 100%);color:#232f3e}
+        .summary-card .value{font-size:1.6em;font-weight:700;margin-bottom:5px}
+        .summary-card .label{font-size:0.85em;opacity:0.8}
+        table{width:100%;border-collapse:collapse;margin-top:15px}
+        th,td{padding:10px 12px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.1);font-size:0.85em}
+        th{background:rgba(255,153,0,0.2);color:#ff9900;font-weight:600;position:sticky;top:0;white-space:nowrap}
+        tr:hover{background:rgba(255,255,255,0.05)}
+        .table-container{max-height:500px;overflow-y:auto;border-radius:10px;border:1px solid rgba(255,255,255,0.1)}
+        .status{padding:4px 8px;border-radius:5px;font-size:0.8em;font-weight:600}
+        .status.success{background:rgba(76,175,80,0.2);color:#81c784}
+        .status.warning{background:rgba(255,193,7,0.2);color:#ffd54f}
+        .status.error{background:rgba(244,67,54,0.2);color:#e57373}
+        .status.info{background:rgba(33,150,243,0.2);color:#64b5f6}
+        .export-btn{background:#4caf50;color:white;border:none;padding:10px 20px;border-radius:5px;cursor:pointer;margin-right:10px;margin-top:10px}
+        .export-btn:hover{background:#45a049}
+        .loading{display:none;text-align:center;padding:40px}
+        .loading.visible{display:block}
+        .spinner{width:50px;height:50px;border:5px solid rgba(255,153,0,0.3);border-top-color:#ff9900;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 20px}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        .error-message{background:rgba(244,67,54,0.2);border:1px solid #f44336;border-radius:10px;padding:20px;margin-top:20px;display:none}
+        .error-message.visible{display:block}
+        .row{display:flex;gap:20px;flex-wrap:wrap}
+        .col-6{flex:1;min-width:300px}
+        .col-4{flex:1;min-width:200px}
+        .col-3{flex:1;min-width:200px}
+        .info-text{font-size:0.85em;color:#aaa;margin-top:5px}
+        .new-seller-badge{display:inline-block;background:rgba(33,150,243,0.3);color:#64b5f6;padding:2px 8px;border-radius:10px;font-size:0.75em;margin-left:5px}
+        .seller-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+        .seller-tab{padding:10px 20px;border:2px solid rgba(255,153,0,0.3);background:rgba(0,0,0,0.3);color:#fff;border-radius:8px;cursor:pointer;transition:all 0.3s ease;font-size:0.9em}
+        .seller-tab:hover{border-color:#ff9900;background:rgba(255,153,0,0.1)}
+        .seller-tab.active{background:linear-gradient(135deg,#ff9900,#ffad33);color:#232f3e;border-color:#ff9900;font-weight:700}
+        .roadmap-section{background:rgba(0,0,0,0.3);border-radius:12px;padding:25px;margin-top:20px;border-left:4px solid #ff9900}
+        .roadmap-section h3{color:#ff9900;margin-bottom:15px;font-size:1.2em}
+        .roadmap-section h4{color:#ffcc80;margin:18px 0 10px;font-size:1em}
+        .roadmap-section p{margin-bottom:10px;line-height:1.6;color:#ddd}
+        .roadmap-section ul{margin:10px 0 15px 20px}
+        .roadmap-section li{padding:5px 0;line-height:1.5;color:#ccc}
+        .roadmap-section .highlight-stat{color:#ff9900;font-weight:700}
+        .roadmap-section .fee-box{background:rgba(255,153,0,0.1);border:1px solid rgba(255,153,0,0.3);border-radius:8px;padding:15px;margin:10px 0}
+        .roadmap-section .deals-box{background:rgba(76,175,80,0.1);border:1px solid rgba(76,175,80,0.3);border-radius:8px;padding:15px;margin:10px 0}
+        .no-data-message{text-align:center;padding:30px;color:#aaa;background:rgba(0,0,0,0.2);border-radius:10px;margin-top:15px}
+        .no-data-message .icon{font-size:40px;margin-bottom:10px}
+        .embedded-data-info{background:rgba(76,175,80,0.15);border:1px solid rgba(76,175,80,0.4);border-radius:10px;padding:12px 18px;margin-bottom:15px;display:flex;align-items:center;gap:12px}
+        .embedded-data-info .icon{font-size:28px}
+        .embedded-data-info .text{flex:1}
+        .embedded-data-info .text h4{color:#81c784;margin-bottom:3px;font-size:0.95em}
+        .embedded-data-info .text p{color:#aaa;font-size:0.85em}
+        .debug-section{background:rgba(0,0,0,0.5);border:1px solid #333;border-radius:10px;padding:15px;margin-top:20px;font-family:monospace;font-size:11px;max-height:250px;overflow-y:auto}
+        .detected-ids-box{background:rgba(33,150,243,0.15);border:1px solid rgba(33,150,243,0.4);border-radius:10px;padding:12px 18px;margin-top:10px;display:none}
+        .detected-ids-box.visible{display:block}
+        .detected-ids-box h4{color:#64b5f6;margin-bottom:5px;font-size:0.95em}
+        .detected-ids-box p{color:#ccc;font-size:0.85em}
+        .detected-ids-box .ids-list{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px}
+        .detected-ids-box .id-chip{background:rgba(33,150,243,0.3);color:#90caf9;padding:4px 12px;border-radius:15px;font-size:0.85em;font-family:monospace}
+        .radio-group{display:flex;gap:15px;margin-bottom:15px}
+        .radio-group label{display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 18px;border:2px solid rgba(255,153,0,0.3);border-radius:8px;transition:all 0.3s ease}
+        .radio-group label:hover{border-color:#ff9900;background:rgba(255,153,0,0.1)}
+        .radio-group input[type="radio"]:checked+span{color:#ff9900;font-weight:700}
+        .radio-group label:has(input:checked){border-color:#ff9900;background:rgba(255,153,0,0.15)}
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>🇵🇱 Amazon PL Opportunity Calculator</h1>
+        <p>Estimate incremental opportunity, fees, deals impact & Year 1 roadmap for Amazon Poland</p>
+    </div>
+
+    <div class="card">
+        <h2>📥 Input Parameters</h2>
+        <div class="input-group">
+            <label>How do you want to identify sellers?</label>
+            <div class="radio-group">
+                <label><input type="radio" name="idMode" value="auto" checked onchange="toggleIdMode()"><span>🔍 Auto-detect from uploaded files</span></label>
+                <label><input type="radio" name="idMode" value="manual" onchange="toggleIdMode()"><span>✏️ Enter Merchant IDs manually</span></label>
+            </div>
+        </div>
+        <div class="input-group" id="manualIdGroup" style="display:none">
+            <label for="merchantIds">Merchant Customer IDs (comma-separated for multiple)</label>
+            <textarea id="merchantIds" placeholder="e.g., 156072713, 234567890, 345678901"></textarea>
+            <p class="info-text">Enter one or more seller IDs separated by commas</p>
+        </div>
+        <div class="detected-ids-box" id="detectedIdsBox">
+            <h4>🔍 Detected Merchant IDs</h4>
+            <p>IDs will appear here once you upload the seller category performance file.</p>
+            <div class="ids-list" id="detectedIdsList"></div>
+        </div>
+        <div class="row" style="margin-top:15px">
+            <div class="col-6">
+                <div class="input-group">
+                    <label for="rampRate">Ramp Rate (R) — Default 20%</label>
+                    <input type="number" id="rampRate" value="0.20" step="0.01" min="0" max="1">
+                    <p class="info-text">Percentage of EU category GMS expected to replicate on PL in Year 1</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>📁 Upload Data Files</h2>
+        <div class="embedded-data-info">
+            <div class="icon">📈</div>
+            <div class="text">
+                <h4>✅ Deals Contribution Data Pre-loaded</h4>
+                <p>PL deals benchmark data is embedded. No upload needed for deals analysis.</p>
+            </div>
+            <span class="data-loaded-badge">Pre-loaded</span>
+        </div>
+        <p style="margin-bottom:15px;color:#64b5f6;">💡 Upload any format: .csv, .tsv, .txt, .xlsx, .xls — the tool auto-detects.</p>
+        <div class="row">
+            <div class="col-3">
+                <div class="file-upload-container">
+                    <input type="file" id="sellerCatFile" accept="*/*">
+                    <label for="sellerCatFile" class="file-upload-label" id="sellerCatLabel">
+                        <div class="icon">📊</div>
+                        <div><strong>Seller Category Performance</strong> <span class="required-badge">Required</span></div>
+                        <div style="font-size:0.8em;color:#aaa;margin-top:4px">seller_category_perf</div>
+                        <div class="file-status" id="sellerCatStatus">Click to select file</div>
+                    </label>
+                </div>
+            </div>
+            <div class="col-3">
+                <div class="file-upload-container">
+                    <input type="file" id="catGrowthFile" accept="*/*">
+                    <label for="catGrowthFile" class="file-upload-label" id="catGrowthLabel">
+                        <div class="icon">📈</div>
+                        <div><strong>Category Growth Data</strong> <span class="required-badge">Required</span></div>
+                        <div style="font-size:0.8em;color:#aaa;margin-top:4px">Marketplace + Category YoY</div>
+                        <div class="file-status" id="catGrowthStatus">Click to select file</div>
+                    </label>
+                </div>
+            </div>
+            <div class="col-3">
+                <div class="file-upload-container">
+                    <input type="file" id="asinFeeFile" accept="*/*">
+                    <label for="asinFeeFile" class="file-upload-label optional" id="asinFeeLabel">
+                        <div class="icon">📦💰</div>
+                        <div><strong>ASIN Performance & Fee Comparison</strong> <span class="optional-badge">Optional</span></div>
+                        <div style="font-size:0.8em;color:#aaa;margin-top:4px">ASIN details + fee data (one file)</div>
+                        <div class="file-status" id="asinFeeStatus">Click to select file</div>
+                    </label>
+                </div>
+            </div>
+        </div>
+        <button class="btn" id="runBtn" type="button" onclick="runAnalysis()">🚀 Calculate PL Opportunity for All Sellers</button>
+    </div>
+
+    <div class="loading" id="loadingSection"><div class="spinner"></div><p>Analyzing data...</p></div>
+    <div class="error-message" id="errorMessage"><h3>❌ Error</h3><p id="errorText"></p></div>
+
+    <div class="results-section" id="resultsSection">
+        <div class="card" id="sellerTabsCard" style="display:none">
+            <h2>🏪 Select Seller</h2>
+            <div class="seller-tabs" id="sellerTabs"></div>
+        </div>
+        <div id="sellerResultsContainer"></div>
+        <div class="card">
+            <h2>💾 Export Results</h2>
+            <button class="export-btn" onclick="exportAllJSON()">📥 Download All Results (JSON)</button>
+            <button class="export-btn" onclick="exportAllCSV()">📥 Download Summary CSV</button>
+        </div>
+        <div class="card">
+            <h2>🔍 Debug Information</h2>
+            <div class="debug-section" id="debugSection"><p>Debug info will appear here...</p></div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ============================================
+// CHANGE 1: Case-insensitive category normalizer
+// ============================================
+function normCat(s) {
+    return String(s || '').trim().toLowerCase();
+}
+
+// ============================================
+// EMBEDDED DEALS DATA
+// ============================================
+const PL_DEALS_RAW = [
+["Toys & Games","Electronics",168.76,0,0],["Shoes","Sports",56161.97,257.94,0],["Toys","Camera",453.58,23.24,0.05],["Tools","Home Improvement",198176.38,45030.62,0.23],["Lawn and Garden","Grocery",4.34,0,0],["Camera","Automotive",9695.51,1173,0.12],["Tools","Luggage",109.13,0,0],["Baby","Baby",18472.35,365.73,0.02],["Home Improvement","Beauty",20267.93,1755.58,0.09],["Accessories","Major Appliances",1058.66,0,0],["","Toys",7292059.3,609658.67,0.08],["3D Printing","Beauty",97.19,0,0],["Home Décor","Pet Products",162.68,0,0],["Toys","Jewelry",1754.65,135,0.08],["BISS","Kitchen",38758.76,8073.73,0.21],["Other","",10270.96,27.21,0],["PC","Baby",85.83,0,0],["Apparel","Biss",32202.77,1813.81,0.06],["Home","Apparel",559747.81,287863.89,0.51],["Lawn and Garden","Camera",208628.56,52352.22,0.25],["Digital_Accessories","Kitchen",414.34,0,0],["Sports","",4555.75,511.36,0.11],["Software","PC",199.42,0,0],["Home Décor","Apparel",102.22,0,0],["Automotive","Luggage",64.82,0,0],["Video Games","Electronics",954.25,0,0],["Musical Instruments","Biss",4348.64,68.62,0.02],["Apparel","Personal_Care_Appliances",6257.64,2033.89,0.33],["Camera","Wireless",17789.73,308.52,0.02],["Home","Grocery",12256.47,770.27,0.06],["Lawn and Garden","",1157.77,0,0],["Home Décor","Jewelry",69.37,0,0],["Office Products","Outdoors",1114.33,0,0],["Consumables","Home Improvement",30362.84,0,0],["Jewelry","Toys",2289.69,254.21,0.11],["Industrial Electrical","Home Improvement",8.67,0,0],["Grocery","Furniture",168.67,0,0],["Jewelry","Lawn and Garden",2921.86,0,0],["Home","Pet Products",180403.66,19490.22,0.11],["Toys & Games","Luggage",251.71,0,0],["Lawn and Garden","Office Products",28699.59,77.21,0],["Home Décor","Home Improvement",2702.28,0,0],["Office Products","Health & Personal Care",49580.41,1113.77,0.02],["Toys","Home",184344.2,14598.49,0.08],["Home Improvement","Kitchen",127089.12,11920.58,0.09],["Beauty & Personal Care","Luxury_Beauty",591.87,0,0],["Lawn and Garden","Personal_Care_Appliances",9946.35,1525.71,0.15],["Home Décor","Electronics",1303.82,0,0],["3D Design & Print on Demand","Baby",96.75,0,0],["","Pet Products",1767094.57,154088.49,0.09],["Electronics & Accessories","Office Products",155.4,0,0],["","Furniture",1994307.8,315184.14,0.16],["Automotive","Home",157592.61,28371.96,0.18],["","Luxury_Beauty",194129.87,3949.12,0.02],["Tools","Jewelry",25.3,0,0],["Other","Health & Personal Care",97265.21,5814.8,0.06],["Tools","Electronics",258607.07,31150.64,0.12],["Other","Software",163.19,0,0],["Health & Personal Care","Lawn and Garden",6098.53,0,0],["Jewelry","Beauty",7027.98,542.36,0.08],["Major Appliances","Automotive",4001.67,0,0],["Toys & Games","Home",516.75,0,0],["Electronics","Apparel",70668.5,3161.36,0.04],["Apparel","Luxury_Beauty",312.05,0,0],["Musical Instruments","Sports",7657.61,0,0],["Yard Services","Lawn and Garden",46.46,0,0],["Tools","Home",128939.08,11445.43,0.09],["Business Industrial","Home Improvement",8.71,0,0],["Sporting Goods","Pet Products",48.36,0,0],["Other","Watches",6840.18,0,0],["Other","Luggage",15007.26,399.63,0.03],["Automotive","Office Products",908.91,0,0],["Sports","Luggage",22677.32,4587.45,0.20],["Other","Major Appliances",2976.34,0,0],["Food Service & Grocery","Electronics",219.67,0,0],["Grocery","Beauty",197.06,0,0],["Beauty","PC",1430.86,0,0],["Apparel and Jewelry Services","Home",17458.97,511.44,0.03],["Home","Personal_Care_Appliances",48409.46,5953.65,0.12],["BISS","Health & Personal Care",8494.69,714.83,0.08],["Grocery","Kitchen",4289.62,0,0],["Medical","Home",419.84,0,0],["Apparel","Lawn and Garden",17088.91,13.15,0],["Consumables","Furniture",872.42,0,0],["Sports","Musical Instruments",997.79,0,0],["Books","Toys",1106.17,0,0],["Wireless","Baby",835.99,0,0],["Major Appliances","Electronics",5729.8,53.33,0.01],["Accessories","Musical Instruments",1343.84,0,0],["Home","Beauty",313957.43,3048.4,0.01],["Wireless","Health & Personal Care",15247.82,1196.01,0.08],["3D Printing","Automotive",644.2,88.61,0.14],["Industrial Electrical","Lawn and Garden",84.75,0,0],["Shoes","Wireless",20285.44,0,0],["Lawn and Garden","Beauty",4673.92,63.13,0.01],["Furniture","Home Improvement",47.94,0,0],["Home Décor","Home",23633.47,0,0],["Lawn and Garden","Lawn and Garden",95941.58,12006.29,0.13],["Abrasives & Finishing","Grocery",39.71,0,0],["Electronics","Luggage",62475.62,6137.77,0.10],["","Prescription_Eyewear",2417.67,0,0],["Tools","Biss",175790.4,11471.88,0.07],["Sports","Biss",141328.37,19288.98,0.14],["Tools","Apparel",18927.6,0,0],["Home","Automotive",293575.73,24529.67,0.08],["Apparel","Jewelry",13632.68,624.35,0.05],["BISS","Shoes",16224.91,11194.47,0.69],["Wireless","Jewelry",12652.84,33.6,0],["Pet Products","PC",10.68,0,0],["Camera","Shoes",31.66,0,0],["Home Entertainment","Sports",170.28,0,0],["Home","Home Improvement",774679.58,53946.69,0.07],["Grocery","Shoes",5382.47,323.4,0.06],["Apparel","Outdoors",2097.64,0,0],["Automotive","Electronics",207562.81,19119.62,0.09],["Office Products","Shoes",4025.63,0,0],["Home Improvement","Home Entertainment",697.45,0,0],["Toys","Books",2088.57,14.32,0.01],["Janitorial & Sanitation","Home",3.44,0,0],["Pet Products","Baby",238.26,0,0],["Consumer Electronic Services","PC",1213.34,0,0],["Abrasives & Finishing","Toys",214.71,0,0],["Stationery","Office Products",490.53,0,0],["PC","Health & Personal Care",5819.84,156.4,0.03],["Baby","Luggage",45.64,0,0],["Home Improvement","Jewelry",2234.75,0,0],["Tools","Toys",25909.12,2941.96,0.11],["Grocery","Personal_Care_Appliances",181.94,0,0],["Kitchen","Office Products",70919.15,14279.07,0.20],["Lawn and Garden","Jewelry",411.64,0,0],["Shoes","Jewelry",752.56,0,0],["Home Entertainment","Kitchen",1840.91,408.46,0.22],["Sports","Shoes",19349.1,352.24,0.02],["Home Improvement","Furniture",72105.57,1046.73,0.01],["Luggage","Luggage",56219.43,8109.5,0.14],["BISS","Pet Products",6574.09,75.34,0.01],["Automotive","Toys",38687.33,9005.58,0.23],["Video Games","Video Games",6013.97,0,0],["BISS","PC",30925.62,2610.22,0.08],["Lighting","Home Improvement",1621.57,453.25,0.28],["Camera","Musical Instruments",2971.52,175.33,0.06],["Shoes","Apparel",58833.68,1480.17,0.03],["Home Improvement","Pet Products",75301.86,29554.24,0.39],["3D Design & Print on Demand","Office Products",43.1,0,0],["Home","Camera",1972.82,0,0],["Tools","Furniture",53197.61,20104.55,0.38],["Other","Home Improvement",121063.66,2435.25,0.02],["PC","Personal_Care_Appliances",867.27,0,0],["Shoes","Office Products",523.44,0,0],["Camera","Pet Products",730.92,130.74,0.18],["Abrasives & Finishing","Home",1045.41,265.57,0.25],["Kitchen","Electronics",109815.69,13577.28,0.12],["Jewelry","Health & Personal Care",1468.79,0,0],["Sports","Furniture",897462.3,72771.35,0.08],["Beauty & Personal Care","Health & Personal Care",776,51.5,0.07],["Kitchen","Personal_Care_Appliances",6235.99,29.05,0],["Jewelry","Major Appliances",13.01,0,0],["Home","Electronics",833218.53,165053.7,0.20],["Apparel","Home Entertainment",3295.99,1581.36,0.48],["Electronics & Accessories","Automotive",786.56,5.52,0.01],["Tools","Grocery",690.42,0,0],["Furniture","Kitchen",280691.79,7744.66,0.03],["Home","Toys",584507.61,50734.41,0.09],["PC","Kitchen",16167.27,138,0.01],["Home","Baby",55119.35,9737.63,0.18],["Commercial Kitchen","Kitchen",232.47,0,0],["Toys","Shoes",5860.7,169.09,0.03],["Health & Personal Care","Shoes",131,0,0],["Jewelry","Personal_Care_Appliances",66.69,0,0],["Pet Products","Automotive",38839.17,11442.6,0.29],["BISS","Sports",28081.96,707.69,0.03],["PC","Luggage",1694.6,0,0],["Wireless","Major Appliances",810.94,0,0],["Tools","Personal_Care_Appliances",66926.05,53409.81,0.80],["Dental","Personal_Care_Appliances",7326.8,737.16,0.10],["Luggage","Apparel",202168.57,3472.32,0.02],["Wireless","Sports",28380.32,1006.05,0.04],["Shoes","Furniture",4523.95,0,0],["Accessories","Electronics",226072.6,9785.89,0.04],["Pets","Health & Personal Care",188.38,0,0],["Art and Craft Supplies","Office Products",26757.82,7.51,0],["","Guild",146.26,0,0],["Sporting Goods","",1944.81,1750.59,0.90],["Video Games","Books",1103.07,0,0],["Health & Personal Care","Beauty",14085.77,539.53,0.04],["Kitchen","Pet Products",5724.15,382,0.07],["Automotive","Personal_Care_Appliances",1242.07,0,0],["Kitchen & Dining","Baby",1468.52,0,0],["Shoes","Electronics",11794.8,0,0],["Sports","Toys",106777.46,17057.48,0.16],["Apparel","Home Improvement",161040.33,8167.23,0.05],["Electronics","Baby",3281.93,8.74,0],["Music","Music",29580.45,0,0],["Camera","Video Games",380.62,0,0],["Kitchen","Automotive",22882.13,1037.07,0.05],["Other","Biss",84516.42,12565.57,0.15],["Beauty","Wireless",7074.86,0,0],["Electronics","Books",31831.72,0,0],["Baby","Wireless",750.62,0,0],["Home","Home",4207457.48,830214.41,0.20],["Apparel and Jewelry Services","Watches",510.78,0,0],["Musical Instruments","Office Products",925.31,0,0],["Office Products","Home Improvement",176333.41,22426.07,0.13],["","Personal_Care_Appliances",1738939.99,265074.72,0.15],["Electronics & Accessories","Home",2264.32,0,0],["Office Products","Office Products",223901.18,14416.6,0.06],["Lawn and Garden","Wireless",2292.8,24.08,0.01],["Jewelry","Jewelry",69393.86,1165.86,0.02],["Wireless","Lawn and Garden",39890.44,9324.44,0.23],["","Wireless",2131337.35,285594.48,0.13],["Other","Pet Products",51704.05,2679.62,0.05],["Consumables","Personal_Care_Appliances",9267.91,0,0],["Media","Toys",609.21,0,0],["Luggage","Toys",31.05,0,0],["BISS","Home Improvement",109067.82,17681.92,0.16],["Office Products","Sports",37619.17,739.65,0.02],["Home","Musical Instruments",7320.51,0,0],["BISS","Office Products",454418.73,294698.56,0.65],["Party Supplies","Home Improvement",289.89,0,0],["Lawn and Garden","Home",384410.71,105198.69,0.27],["Electronics & Accessories","Wireless",4104.25,0,0],["Pet Products","Beauty",13298.7,0,0],["3D Design & Print on Demand","Home Improvement",52.78,0,0],["Accessories","Pet Products",2881.07,0,0],["Office Products","Baby",87.72,0,0],["Beauty","Sports",17974.42,1642.96,0.09],["Home Improvement","Wireless",1806.01,0,0],["Electronics","Home",535522.32,79362.63,0.15],["Toys","Office Products",30615.91,3023.75,0.10],["BISS","Apparel",10733.17,71.32,0.01],["Home Décor","Books",48071.35,0,0],["","Health & Personal Care",3257718.94,410349.69,0.13],["Sports","PC",2934.05,0,0],["Outdoors","Shoes",30.98,0,0],["Kitchen","Wireless",37281.18,4321.14,0.12],["Furniture","Biss",997.22,210.65,0.21],["Abrasives & Finishing","Kitchen",14729.09,2264.65,0.15],["Consumables","Office Products",278.93,0,0],["Health & Personal Care","Kitchen",402.99,0,0],["Other","Camera",18814.34,0,0],["Sports","Wireless",14564.47,0,0],["Beauty","Baby",3870.56,0,0],["Health & Personal Care","Camera",1092.32,0,0],["Baby","Office Products",1878.82,288.81,0.15],["Beauty","Grocery",31.62,0,0],["Office Products","Electronics",262876.12,67726.46,0.26],["Tools","Outdoors",501.8,101.14,0.20],["Accessories","Baby",4270.85,0,0],["Office Products","Furniture",317139.81,36370.02,0.11],["Wireless","Office Products",32728.12,4639.28,0.14],["Home Improvement","Automotive",15375.28,0,0],["BISS","Home",192582,33755.25,0.18],["Accessories","Video Games",304.77,0,0],["Wireless","Electronics",11138888.99,7583618.36,0.68],["Lab Equipment & Instruments","Home Improvement",595.41,0,0],["Business Services - Professional","Automotive",1162.2,0,0],["Fresh_Prepared","Home",114.35,0,0],["Electronics","Lawn and Garden",19168.75,284.71,0.01],["Luggage","Kitchen",78.06,0,0],["Consumer Electronic Services","Electronics",70.71,0,0],["Grocery","Pet Products",5985.83,0,0],["Automotive","PC",8203.17,3324.07,0.41],["Pet and Animal Services","Pet Products",27.05,0,0],["Home","Outdoors",2822.58,22.39,0.01],["Health & Personal Care","Personal_Care_Appliances",16641.32,247.85,0.01],["Wireless","Camera",45031.19,21671.8,0.48],["Toys","Tools",10.84,0,0],["","Mobile_Electronics",48.42,0,0],["PC","Musical Instruments",1460.93,116.8,0.08],["Grocery","Toys",1795.94,0,0],["Wireless","Wireless",599958.95,57604.93,0.10],["Health & Personal Care","Health & Personal Care",234591.53,13185.9,0.06],["Beauty","Furniture",17701.7,0,0],["Electronics","Jewelry",90655.92,5006.88,0.06],["Toys","Luggage",2018.12,131.41,0.07],["PC","Home Improvement",43010.71,12561.03,0.29],["Grocery","Biss",731.48,68.12,0.09],["Lawn and Garden","Outdoors",207.9,0,0],["Jewelry","Home",16273.28,324.01,0.02],["Kitchen","Luggage",5226.5,593.68,0.11],["Office Products","Major Appliances",598.99,0,0],["Jewelry","Sports",2026.72,0,0],["Kitchen","Beauty",12633.37,0,0],["Musical Instruments","Automotive",2971.64,67.46,0.02],["","PC",4438171.79,349828.09,0.08],["Lighting","Kitchen",5055.93,137.36,0.03],["Jewelry","Apparel",2086.55,0,0],["PC","Wireless",107109.85,883.31,0.01],["Home","Home Entertainment",41.16,0,0],["Chemicals & Solvents","Home Improvement",231.05,0,0],["Wireless","Automotive",16544.71,131.77,0.01],["","Watches",661915.51,6746.25,0.01],["","Major Appliances",288443.67,16750.16,0.06],["3D Printing","Health & Personal Care",1030.21,0,0],["Pet Products","Pet Products",201879.09,15627.48,0.08],["","Baby",337078.89,48458.46,0.14],["Personal_Care_Appliances","Home",5162.22,0,0],["Health & Beauty","Lawn and Garden",523.06,0,0],["Wireless","Shoes",3243.28,785.76,0.24],["Beauty & Personal Care","Home",2484.1,0,0],["Tools","Kitchen",153148.27,22688.41,0.15],["Automotive","Health & Personal Care",3120.32,28.22,0.01],["Home Improvement","PC",5529.99,0,0],["Home Improvement","Sports",16550.04,601.09,0.04],["Camera","Baby",124.19,0,0],["Tools","Baby",523.2,0,0],["Apparel","Office Products",48088.73,1931.11,0.04],["BISS","Personal_Care_Appliances",3158.93,654.62,0.21],["Camera","Luggage",3681.12,243.12,0.07],["Tools","Watches",803.33,0,0],["Musical Instruments","Personal_Care_Appliances",13147.66,826.88,0.06],["Toys","Sports",22520.86,189.51,0.01],["Tools","PC",460141.24,94830.64,0.21],["Toys","Furniture",12187.68,0,0],["Kitchen","Watches",364.92,0,0],["PC","Apparel",35876.13,1158.23,0.03],["Consumables","Baby",955.19,44.25,0.05],["Party Supplies","Kitchen",102.66,0,0],["PC","Lawn and Garden",2060.81,0,0],["3D Design & Print on Demand","Home",371.43,0,0],["Beauty","Luxury_Beauty",9256.63,0,0],["3D Printing","Office Products",9173.89,1347.06,0.15],["Apparel","Music",33.89,0,0],["Office Products","Biss",83873.38,31398.16,0.37],["Personal Care Appliances","Beauty",584.9,0,0],["Personal_Care_Appliances","Home Improvement",36.32,0,0],["Tools","Pet Products",6378.81,172,0.03],["Office Products","Wireless",94226.38,36223.78,0.38],["Grocery","Lawn and Garden",20.58,0,0],["Pet Products","Wireless",26133.5,615.52,0.02],["Home","Luggage",58286.5,5023.71,0.09],["Beauty","Home",326108.62,76298.3,0.23],["Other","Office Products",159081.15,15676.75,0.10],["Camera","Home Improvement",9586.8,1349.7,0.14],["Sports","Pet Products",27073.35,2527.22,0.09],["Wine","Kitchen",11560.21,0,0],["Other","Books",306541.98,159.08,0],["Health & Personal Care","Home",2306.63,687.66,0.30],["Consumables","PC",266.23,0,0],["Sports","Sports",1008012.87,215501.8,0.21],["Video Games","Toys",25384.76,0,0],["Grocery","Office Products",3422.36,157.54,0.05],["Pet Products","Outdoors",533.56,0,0],["Furniture","Apparel",3109.81,0,0],["Toys","Baby",92131.51,170.11,0],["Major Appliances","Sports",196.53,0,0],["Lighting","Home",3810.56,0,0],["Baby","Shoes",567.39,12.65,0.02],["Apparel","Watches",2922.09,0,0],["Office Products","Watches",20890.58,0,0],["BISS","Automotive",34775.49,4397.48,0.13],["Beauty","Major Appliances",1053.29,37.86,0.04],["Pet Products","Home Improvement",21685.85,11512.92,0.53],["Gourmet","Grocery",54.23,0,0],["BISS","Furniture",1169.75,0,0],["Electronics","Kitchen",909408.92,422645.28,0.46],["Automotive","Biss",11759.14,0,0],["Major Appliances","Home",3230.11,1308.2,0.41],["PC","Home",14817.05,753.48,0.05],["Home Improvement","Office Products",43346.16,8630.5,0.20],["Electronics","Personal_Care_Appliances",35873.27,12248.4,0.34],["Camera","Lawn and Garden",493.97,0,0],["Outdoors","Home",12596.87,0,0],["Major Appliances","Lawn and Garden",237.76,0,0],["Other","Personal_Care_Appliances",71071.21,5872,0.08],["Toys & Games","Toys",3056.47,32.18,0.01],["Personal_Care_Appliances","Beauty",120.04,0,0],["Baby","Home",12203.58,389.03,0.03],["Wireless","Home Entertainment",805.06,0,0],["Consumables","Pet Products",572.38,0,0],["Automotive","Jewelry",3281.74,38.64,0.01],["Camera","Kitchen",2235.89,25.46,0.01],["3D Design & Print on Demand","Electronics",2310.73,93.07,0.04],["Art","Luggage",54.24,0,0],["Home","PC",115800.78,15958.59,0.14],["BISS","Lawn and Garden",3036.08,6.64,0],["Jewelry","Watches",18394.74,3227.57,0.18],["Toys","Musical Instruments",52.36,0,0],["Kitchen","Grocery",11299.48,204.79,0.02],["","Books",1415563.44,1860.18,0],["Shoes","Personal_Care_Appliances",1957.06,289.72,0.15],["Shoes","Beauty",332.92,14.52,0.04],["Wireless","Furniture",4618.21,26.44,0.01],["","Beauty",4158279.03,185774.43,0.04],["Camera","Sports",1957.69,0,0],["PC","Toys",1446.37,0,0],["","Music",623058.1,103.02,0],["Watches","Home",520.05,0,0],["Pet Products","Health & Personal Care",2926.56,0,0],["Entertainment_Collectibles","Home",851.14,25.3,0.03],["Art","Books",48.18,0,0],["Pets","Beauty",167.36,0,0],["Kitchen & Dining","Jewelry",72.66,0,0],["Baby","Electronics",148,0,0],["","Tools",227639,88045.06,0.39],["Toys","Biss",15002,84.96,0.01],["Home Entertainment","Furniture",2413.44,0,0],["PC","Office Products",18134.42,2486.21,0.14],["Office Products","Automotive",6665.2,20.37,0],["Tools","Automotive",16757.07,425.25,0.03],["Shoes","Kitchen",6493.33,11.25,0],["Personal_Care_Appliances","Health & Personal Care",15839.96,1342.9,0.08],["Other","Kitchen",195012.98,11758.98,0.06],["Apparel and Jewelry Services","Kitchen",8068,771.35,0.10],["Accessories","Apparel",24544.88,75.37,0],["Apparel and Jewelry Services","Jewelry",42.85,0,0],["Health & Personal Care","Sports",842.84,0,0],["Wireless","Beauty",36223.18,1710.68,0.05],["Other","Tools",2610.18,0,0],["Automotive","Lawn and Garden",1865.8,0,0],["Pet Products","Luggage",6051,659.3,0.11],["Art","Kitchen",130.86,0,0],["Outdoors","Toys",1776.9,0,0],["Baby","Automotive",614.59,0,0],["Musical Instruments","Home Improvement",19822.03,931.88,0.05],["PC","Automotive",43292.45,3391.17,0.08],["Electronics","Watches",8588.04,0,0],["Camera","Jewelry",66.01,0,0],["","Camera",1040151.52,41003.73,0.04],["Health & Personal Care","Major Appliances",612.21,0,0],["Accessories","Prescription_Eyewear",1918.14,0,0],["Electronics","Office Products",82694.79,7634.4,0.09],["Shoes","Shoes",318847.77,21338.11,0.07],["Wireless","Watches",865.89,86.37,0.10],["Beauty","Electronics",35485.67,4871.32,0.14],["3D Design & Print on Demand","Luggage",4723.37,0,0],["Kitchen","Camera",7069.05,1309.46,0.19],["Kitchen","Video Games",4935.31,2473.49,0.50],["Office Products","Pet Products",15984.57,162.23,0.01],["Lawn and Garden","Sports",143578.06,17468.05,0.12],["Major Appliances","Personal_Care_Appliances",145.27,0,0],["Other","Luxury_Beauty",5282.01,0,0],["Jewelry","Wireless",196.07,0,0],["BISS","Luggage",11112.23,684.37,0.06],["Toys","Video Games",302.24,0,0],["","Home Entertainment",82545.67,872.13,0.01],["Shoes","PC",413.1,0,0],["Automotive","Pet Products",16609.06,2733.52,0.16],["Home Décor","PC",64.12,0,0],["Lawn and Garden","Home Improvement",186768.88,11483.55,0.06],["Toys","Home Improvement",18632.42,661.91,0.04],["Home Entertainment","Home Entertainment",4731.06,0,0],["Pet Products","Apparel",27302.16,6.9,0],["Sports","Automotive",59419.28,12592.02,0.21],["Home Entertainment","Jewelry",835.8,36.23,0.04],["Toys & Games","Office Products",22.97,0,0],["Accessories","Automotive",2312.44,0,0],["Luggage","Shoes",8201.02,94.08,0.01],["Home Improvement","Home Improvement",1225656.29,575911.98,0.47],["Electronics","Home Entertainment",13070.32,0,0],["Beauty","Personal_Care_Appliances",138166.25,18819.74,0.14],["Electronics & Accessories","Toys",11230.54,0,0],["Shoes","Home",25902.57,0,0],["Home","Kitchen",1805618.15,423465.91,0.23],["Home Improvement","Luggage",252.78,0,0],["PC","Jewelry",17.31,0,0],["Home Décor","Furniture",1068.97,0,0],["Automotive","Baby",1666.19,0,0],["Personal_Care_Appliances","Biss",67.94,0,0],["Health & Personal Care","Luxury_Beauty",457.74,0,0],["Camera","Toys",756.94,0,0],["Beauty","Office Products",71496.24,8745.6,0.12],["Apparel","Shoes",277178.56,5182.6,0.02],["Hospitality","Furniture",67.96,0,0],["Pets","Pet Products",567.16,0,0],["Kitchen","Apparel",58065.28,9380.68,0.16],["Sports","Outdoors",2891.48,0,0],["","Home",15780132.19,2033186.44,0.13],["Other","Electronics",1179928.28,205021.71,0.17],["Dental","Health & Personal Care",1366.39,1351.23,0.99],["Electronics & Accessories","Sports",15397.18,1290.99,0.08],["","Home Improvement",6616619.04,657858.67,0.10],["Sports","Major Appliances",322.71,0,0],["Electrical","Kitchen",16409.92,577.34,0.04],["Baby","Kitchen",35695.52,0,0],["Electronics & Accessories","Home Entertainment",11087.29,0,0],["Lawn and Garden","Toys",87520.71,21677.12,0.25],["Personal Care Appliances","Health & Personal Care",1299.9,0,0],["Bedding","Home",4072.77,456.62,0.11],["Outdoors","Electronics",440.91,0,0],["Personal Care Appliances","Personal_Care_Appliances",537.24,0,0],["Electronics","Shoes",13681.46,3201.42,0.23],["Abrasives & Finishing","Home Improvement",33.75,0,0],["Office Products","Personal_Care_Appliances",7318.7,983.54,0.13],["BISS","Baby",1216.53,16.77,0.01],["Baby","Health & Personal Care",884.69,0,0],["Accessories","Watches",238.02,0,0],["Pet Products","Lawn and Garden",996.85,0,0],["Outdoors","Lawn and Garden",2864.65,0,0],["Kitchen","Jewelry",3929.63,0,0],["Pet Products","Jewelry",3675.97,71.34,0.02],["Digital_Accessories","Wireless",131813.59,115832.27,0.88],["Apparel","Grocery",18543.25,139.01,0.01],["Tools","Shoes",2253.26,0,0],["Outdoors","Sports",31202.66,131.04,0],["Home Décor","Lawn and Garden",641.34,0,0],["Apparel","Sports",229648.13,32860.67,0.14],["Musical Instruments","Electronics",146758.1,75406.39,0.51],["Baby","Lawn and Garden",1809.84,132.92,0.07],["Office Products","Toys",119370.87,1063.05,0.01],["Sports","Kitchen",65627.7,2997.86,0.05],["Wireless","Personal_Care_Appliances",5031.95,522.57,0.10],["BISS","Jewelry",5403.39,0,0],["Automotive","Sports",28971.14,40.31,0],["Electronics","Home Improvement",530739.45,141214.94,0.27],["Books","Kitchen",50.85,0,0],["Automotive","Furniture",228635.34,43181.51,0.19],["Digital_Accessories","Toys",434.57,0,0],["Tools","Tools",8869.7,252.37,0.03],["Beauty","Beauty",565828.35,65558.02,0.12],["Lawn and Garden","Kitchen",152869.89,1872.7,0.01],["Electronics","Beauty",13009.76,4.44,0],["Pet Products","Furniture",7523.86,0,0],["Electronics & Accessories","Home Improvement",1723.13,0,0],["Luggage","Electronics",15.06,0,0],["Baby","Jewelry",4225.17,996.23,0.24],["Automotive","Wireless",8688.01,399.29,0.05],["Luggage","PC",316.75,36.8,0.12],["Kitchen & Dining","Home",4087.35,0,0],["Camera","Office Products",11801.53,4574.42,0.39],["Shoes","Watches",97.22,0,0],["Electronics","Sports",292337.58,77799.42,0.27],["Wireless","Kitchen",72514.58,16022.18,0.22],["Electronics & Accessories","Jewelry",5814.16,41.45,0.01],["Books","Home",701.99,0,0],["Other","Sports",127336.97,3557.69,0.03],["Beauty","Lawn and Garden",2141.65,0,0],["Accessories","Toys",55064.33,8019.19,0.15],["Home","Health & Personal Care",111494.47,3423.1,0.03],["Home Décor","Office Products",2688.94,0,0],["Home","Furniture",562355.78,82120.8,0.15],["Major Appliances","Major Appliances",25163.03,6330.33,0.25],["","Lawn and Garden",2511440.78,610238.82,0.24],["Beauty","Health & Personal Care",68539.3,3254.29,0.05],["Kitchen","Home",443063.37,66714.15,0.15],["","Office Products",3834259.58,1290731.11,0.34],["Wireless","Home",371741.66,105993.79,0.29],["Accessories","Grocery",11573.28,19.78,0],["Sports","Jewelry",17009.05,300.54,0.02],["Accessories","Kitchen",358423.11,43014.5,0.12],["Musical Instruments","Musical Instruments",307731.11,38486,0.13],["Camera","Health & Personal Care",104.97,0,0],["Health & Personal Care","Office Products",19.85,0,0],["Musical Instruments","Furniture",2984.6,0,0],["","Softlines_Private_Label",112.95,0,0],["Apparel","Beauty",19248.87,821.43,0.04],["Outdoors","Kitchen",1453.89,0,0],["Home Improvement","Shoes",4722.41,0,0],["Toys","Apparel",18698.72,933.81,0.05],["Home","Video Games",3231.2,0,0],["Beauty","Toys",52674.74,10089.36,0.19],["Apparel","Kitchen",46883.44,3543.01,0.08],["Office Products","Lawn and Garden",10806.99,456.7,0.04],["Electronics","Automotive",73825.81,12212.61,0.17],["Baby","Biss",8588.33,0,0],["Art","Home",2512.66,0,0],["Camera","Camera",152862.12,14884.08,0.10],["Sports","Lawn and Garden",8951.1,0,0],["Musical Instruments","Lawn and Garden",1753,20.01,0.01],["PC","Electronics",1833792.93,944168.61,0.51],["Apparel","Health & Personal Care",21369.63,1104.15,0.05],["Kitchen","Kitchen",1099279.19,265964.9,0.24],["Camera","Apparel",2157.02,55.99,0.03],["Art and Craft Supplies","Home",1541.18,0,0],["Sports","Apparel",206057.8,49550.87,0.24],["Personal Care Appliances","Apparel",2463.99,5.3,0],["Business Industrial","Home",1529.59,0,0],["Accessories","Camera",108.29,0,0],["Pet Products","Sports",8281.42,33.29,0],["Home Entertainment","Video Games",27.36,0,0],["Automotive","Automotive",759417.08,64010.27,0.08],["Lawn and Garden","Pet Products",11058.49,4180,0.38],["Accessories","Jewelry",620.7,0,0],["Beauty","Home Improvement",31469.55,1027.36,0.03],["Home Improvement","Video Games",342.1,53.51,0.16],["Kitchen & Dining","Kitchen",2093.48,0,0],["Electronics & Accessories","PC",16864.54,310.06,0.02],["Grocery","Apparel",4241.58,0,0],["Kitchen","Toys",109089.66,18803.54,0.17],["Lawn and Garden","Electronics",102272.64,1471.05,0.01],["Beauty","Pet Products",9316.4,1620.3,0.17],["Baby","Toys",122445.64,30249.12,0.25],["Toys","Personal_Care_Appliances",4304.34,1191.55,0.28],["Electronics","Biss",1067358,253284.54,0.24],["BISS","Grocery",1308.07,14.64,0.01],["Baby","Furniture",5890.15,0,0],["Musical Instruments","Beauty",23781.72,3230.91,0.14],["Personal_Care_Appliances","Personal_Care_Appliances",41150.42,2058.83,0.05],["Musical Instruments","Kitchen",4583.63,427.74,0.09],["BISS","Major Appliances",504.89,0,0],["Wireless","Musical Instruments",2834.41,659.93,0.23],["Health & Beauty","Health & Personal Care",3273.81,0,0],["Home","Books",98.92,0,0],["Lawn and Garden","Luggage",6878.98,245.18,0.04],["Grocery","Sports",159.83,0,0],["Tools","Musical Instruments",76703.91,11727.77,0.15],["Grocery","Electronics",3865.58,0,0],["Apparel","Electronics",80817.13,10042.86,0.12],["Beauty","Camera",1535.17,0,0],["3D Printing","Electronics",418.29,0,0],["Office Products","Musical Instruments",3192.74,0,0],["Health & Personal Care","Home Improvement",773.59,0,0],["Shoes","Pet Products",1669.42,0,0],["Office Products","Home",448808,15484.37,0.03],["Artwork","Furniture",289.58,0,0],["Grocery","Grocery",207401.63,13838.86,0.07],["Furniture","Baby",1557.6,0,0],["Toys","Wireless",3917.43,7.22,0],["Sports","Baby",154.62,0,0],["Musical Instruments","Wireless",9628.18,316.57,0.03],["Lawn and Garden","Baby",269.37,0,0],["Consumables","Beauty",18296.21,0,0],["Shoes","Toys",16910.25,1786.59,0.11],["Party Supplies","Apparel",200.07,0,0],["Home Improvement","Electronics",190115.07,44140.98,0.23],["Toys","Kitchen",58129.16,2755.76,0.05],["","Musical Instruments",415908.51,52873.79,0.13],["Electronics","Outdoors",1187.61,4.8,0],["Accessories","Shoes",3783.07,76.81,0.02],["Toys","Electronics",41801.94,1826.19,0.04],["Apparel","Apparel",1710493.05,383626.59,0.22],["Watches","Watches",216071.29,0,0],["Jewelry","Home Improvement",19632.82,0,0],["Home Décor","Biss",820.24,8.47,0.01],["Baby","Sports",3011.29,166.34,0.06],["3D Design & Print on Demand","Sports",1603.8,0,0],["Major Appliances","Biss",268.73,0,0],["Tools","Lawn and Garden",13699.66,0,0],["","Apparel",7607715.2,2219300.14,0.29],["Toys & Games","Sports",362.63,0,0],["Camera","Home",10292.54,1762.75,0.17],["Automotive","Major Appliances",21.55,0,0],["Accessories","Sports",262475.23,51149.85,0.19],["Beauty & Personal Care","Kitchen",27048.9,2305.38,0.09],["Other","PC",256423.57,51650.1,0.20],["Lawn and Garden","Automotive",7734.3,689.9,0.09],["Camera","Beauty",217.76,0,0],["Tools","Sports",14160.13,42.31,0],["BISS","Toys",10384.1,128.31,0.01],["Toys & Games","Personal_Care_Appliances",117.04,0,0],["Home Improvement","Apparel",24511.49,2009.65,0.08],["Toys","Lawn and Garden",1228.95,0,0],["Sports","Personal_Care_Appliances",8790.03,875.47,0.10],["Pet Products","Shoes",4031.83,0,0],["PC","Beauty",2331.33,0,0],["Wireless","Home Improvement",90380.75,17940.31,0.20],["Hospitality","Home",3299.89,0,0],["Lawn and Garden","Health & Personal Care",8088.22,211.61,0.03],["Camera","Furniture",25862.72,1629.44,0.06],["Pet Products","Watches",1365.89,0,0],["Toys","Grocery",8197.63,2126.55,0.26],["Electronics","Pet Products",34592.47,2903.76,0.08],["Lawn and Garden","Tools",454.77,0,0],["Furniture","Health & Personal Care",1616.41,381.5,0.24],["Pet Products","Electronics",24272.95,1103.84,0.05],["Accessories","Personal_Care_Appliances",506.07,0,0],["Home Improvement","Personal_Care_Appliances",5442.78,0,0],["Baby","Pet Products",1905.52,23.78,0.01],["Lawn and Garden","Furniture",168234.59,4346.06,0.03],["BISS","Wireless",948.76,0,0],["Toys","Watches",532.8,0,0],["Automotive","Home Improvement",239004.2,31031.34,0.13],["BISS","Tools",198.52,0,0],["Kitchen","Sports",45797.14,3758.91,0.08],["Home Improvement","Baby",887.07,218.15,0.25],["Health & Personal Care","Biss",1890.48,0,0],["","",66785358.39,366.12,0],["Automotive","Shoes",15.48,0,0],["Electronics","Musical Instruments",6531.16,522.12,0.08],["Jewelry","Luggage",74.52,0,0],["Personal_Care_Appliances","Shoes",518.14,0,0],["Party Supplies","Home",168.75,0,0],["Office Products","Grocery",3853.07,283.39,0.07],["Medical Laboratory Supplies","Biss",254.23,0,0],["Musical Instruments","Toys",6598.58,0,0],["Home Entertainment","Electronics",6462.22,0,0],["Wireless","Pet Products",28728.19,8440.7,0.29],["Apparel","Pet Products",11306.92,134.48,0.01],["Beauty","Biss",14303.32,1181.86,0.08],["Safety and Security","Home Improvement",482123.53,400794.61,0.83],["Office Products","Luggage",7546.32,239.8,0.03],["Kitchen","Health & Personal Care",23980.45,2608.81,0.11],["Electronics","Furniture",100917.32,19088.46,0.19],["Grocery","Health & Personal Care",7025.33,0,0],["Home","Sports",248937.29,28727.68,0.12],["Other","Toys",216146.8,22238.85,0.10],["Beauty","Kitchen",112640.66,2223.87,0.02],["Grocery","Automotive",49.69,0,0],["Luggage","Home",31870.52,9431.13,0.30],["Health & Personal Care","Electronics",8393.51,230.74,0.03],["Home","Biss",418126.92,35987.27,0.09],["Jewelry","Kitchen",7736.6,2305.67,0.30],["Home Décor","Kitchen",18493.85,26.45,0],["3D Printing","Home",2733.4,0,0],["Sports","Health & Personal Care",57372.62,9338.7,0.16],["Tools","Wireless",9362.81,339.79,0.04],["Major Appliances","Home Improvement",2144.68,0,0],["PC","Pet Products",7967.28,12.99,0],["BISS","Biss",119608.05,9927.76,0.08],["Musical Instruments","Shoes",2572.64,0,0],["Outdoors","Furniture",12821.34,0,0],["Kitchen","Home Improvement",115562.97,1703.76,0.01],["Wireless","Apparel",20795.18,42.12,0],["Luggage","Sports",431.37,0,0],["Other","Baby",10335.09,391.8,0.04],["3D Printing","Home Improvement",348.37,0,0],["Apparel","Camera",1774.05,355.92,0.20],["Luggage","Office Products",248.92,0,0],["Electrical","Biss",824,0,0],["Toys","Pet Products",19502.17,1676.66,0.09],["Beauty","Luggage",444.06,32.43,0.07],["Other","Musical Instruments",19555.92,1876.49,0.10],["Sports","Electronics",78215.91,3654.44,0.05],["Wireless","Toys",117571.91,9192,0.08],["Electronics","Electronics",2247667.57,439473.52,0.20],["Electronics","Video Games",9534.13,170.21,0.02],["","Outdoors",25959.55,745.61,0.03],["Other","Jewelry",24203.4,0,0],["Wireless","Biss",18432.98,207.3,0.01],["","Art and Craft Supplies",298.06,0,0],["Entertainment_Collectibles","Grocery",1716.99,0,0],["Shoes","Luggage",12624.26,498.5,0.04],["Apparel","Video Games",178.69,0,0],["Consumables","Luxury_Beauty",245.96,0,0],["Industrial Electrical","Biss",2221.86,0,0],["BISS","Beauty",3210.53,795.95,0.25],["Electronics","PC",629520.38,285000.04,0.45],["Home Décor","Health & Personal Care",903.66,0,0],["BISS","Musical Instruments",387.02,0,0],["Lawn and Garden","Major Appliances",769.64,0,0],["Toys","Automotive",20345.17,2065.87,0.10],["Automotive","Kitchen",177631.22,26340.4,0.15],["Apparel","Automotive",24590.1,1208.03,0.05],["Sports","Tools",717.65,0,0],["Bedding","Toys",704.48,0,0],["Health & Beauty","Grocery",884.33,9.26,0.01],["Business Industrial","Apparel",581.4,0,0],["Furniture","Furniture",300200.42,17637.06,0.06],["Pet Products","Toys",42827.54,12001.63,0.28],["Toys","Health & Personal Care",42129,25.3,0],["Sports","Home",299736.72,8604.54,0.03],["Grocery","Home Improvement",943.62,0,0],["Automotive","Apparel",13204.48,19.75,0],["Tools","Beauty",5393.42,16.62,0],["Digital_Accessories_2","PC",11023.38,3403.56,0.31],["Kitchen","Tools",1076.13,0,0],["Beauty","Shoes",1289.02,0,0],["Wireless","Video Games",2788.57,573.71,0.21],["Accessories","Books",108521.94,30.24,0],["Health & Personal Care","Grocery",15015.57,0,0],["Lab & Scientific","Biss",2048.24,0,0],["Hydraulics, Pneumatics, & Plumbing","Home Improvement",910.63,0,0],["Office Products","Beauty",40895.92,190.96,0],["Home Improvement","Toys",60222.25,2093.37,0.03],["Accessories","Health & Personal Care",36912.53,2045.16,0.06],["Kitchen","Major Appliances",49283.49,2225.69,0.05],["Sports","Beauty",18427.01,457.58,0.02],["Tools","Health & Personal Care",10448.43,0,0],["Office Products","Jewelry",17911.85,616.85,0.03],["Consumables","Sports",654.79,0,0],["BISS","Watches",13642.93,0,0],["Electronics & Accessories","Biss",29219.24,0,0],["Personal_Care_Appliances","Video Games",1135.74,0,0],["Lawn and Garden","Shoes",953.14,0,0],["Outdoors","Home Improvement",537.44,33.8,0.06],["Major Appliances","Kitchen",11775.71,175.14,0.01],["Watches","Wireless",1491.69,0,0],["Electronics & Accessories","Personal_Care_Appliances",410.76,0,0],["Apparel","Musical Instruments",10620.05,886.29,0.08],["Office & Stationery","Office Products",322.34,0,0],["Electronics & Accessories","Books",5127.21,0,0],["Electronics & Accessories","Electronics",97201.43,22497.65,0.23],["Accessories","Lawn and Garden",9146.86,0,0],["Apparel","Baby",2083.33,16.42,0.01],["Toys","Major Appliances",4083.43,0,0],["Beauty","Jewelry",2483.08,0,0],["Grocery","Home",17889.19,213.86,0.01],["Apparel","Major Appliances",1950.41,0,0],["Home","Office Products",651215.14,44859.11,0.07],["Home Improvement","Musical Instruments",39181.89,12681.52,0.32],["Electrical","Electronics",114373.68,63069.18,0.55],["Bath","Furniture",765.68,78.41,0.10],["Jewelry","Pet Products",-627.21,0,0],["Sports","Camera",56007.36,33511.83,0.60],["Personal_Care_Appliances","Furniture",115.64,0,0],["Electronics","Toys",184346.29,21755.87,0.12],["Toys","Toys",1466153.41,105216.62,0.07],["Accessories","Wireless",8811.23,0,0],["Food Service & Grocery","Beauty",1758.22,0,0],["Lab Equipment & Instruments","Biss",11791.02,5294.21,0.45],["Health & Personal Care","Automotive",918.25,0,0],["Accessories","Beauty",35564.25,993.34,0.03],["Accessories","Home",47816.1,1502.78,0.03],["Kitchen","Outdoors",4152.75,933,0.22],["PC","PC",871451.54,40581.36,0.05],["","Automotive",2100908.26,172888.08,0.08],["Kitchen","Musical Instruments",1243.12,0,0],["Apparel and Jewelry Services","Automotive",1088.78,0,0],["Kitchen","Biss",75664.72,7963.52,0.11],["","Video Games",188431.4,31264.28,0.17],["Lawn and Garden","Biss",40808.81,2373.39,0.06],["Business Industrial","Shoes",994.3,0,0],["Pet Products","Kitchen",41730.07,1667.17,0.04],["3D Design & Print on Demand","Kitchen",704.55,0,0],["Toys","PC",4723.45,0,0],["Electronics","Wireless",1053043.25,287936.88,0.27],["Home Improvement","Tools",17.13,0,0],["Home","Shoes",84819.15,15148.82,0.18],["Office Products","Apparel",43472.82,587.86,0.01],["Lawn and Garden","Video Games",24.05,0,0],["Private Label - Softlines","Apparel",512.1,0,0],["Books","Books",102770.81,4669.25,0.05],["Art","Lawn and Garden",408.54,0,0],["Home","Wireless",29988.64,147.03,0],["Grocery & Gourmet","Grocery",12094.46,0,0],["Jewelry","Automotive",1141.95,0,0],["Home","Jewelry",54125.71,1556.52,0.03],["Home Improvement","Biss",58689.19,4781.25,0.08],["Consumables","Home",3871.4,0,0],["Electronics","Major Appliances",3730.45,23.18,0.01],["Wireless","PC",178963.63,8040.84,0.04],["Tools","Major Appliances",9874.73,1613.46,0.16],["Entertainment_Collectibles","Electronics",1012.07,0,0],["Jewelry","Shoes",49.12,0,0],["Camera","PC",183.15,0,0],["Accessories","PC",69427.74,1604.47,0.02],["Toys","Beauty",20136.77,10863.93,0.54],["Furniture","Sports",11707.24,43.36,0],["Baby","Beauty",13669.36,6.57,0],["","Software",1993.51,0,0],["","Luggage",1502869.08,146688.81,0.10],["Musical Instruments","Apparel",390.58,0,0],["","Wine",226.85,0,0],["Accessories","Furniture",28031.91,119.72,0],["Other","Grocery",115025.93,7238.54,0.06],["BISS","Electronics",52384.73,1513.88,0.03],["Abrasives & Finishing","Watches",111,0,0],["Lighting","Pet Products",-884.98,0,0],["","Electronics",16545270.98,3103082.98,0.19],["","Biss",3904121.89,603232.78,0.15],["Lawn and Garden","PC",865.17,0,0],["Pet Products","Biss",60018.79,435.22,0.01],["Sporting Goods","Tools",180.28,0,0],["Jewelry","Biss",325.21,0,0],["","Jewelry",668709.14,19319.49,0.03],["Specialty Services","Software",13413.76,0,0],["Office Products","Kitchen",248209.93,34277.23,0.14],["Home","Tools",1236.87,0,0],["Accessories","Home Improvement",29750.66,1265.93,0.04],["Home","Major Appliances",20526.23,1145.55,0.06],["Camera","Home Entertainment",2783.19,0,0],["Apparel","Toys",130000.65,29068.83,0.22],["Toys & Games","Shoes",116.94,0,0],["Consumables","Health & Personal Care",8217.28,0,0],["Musical Instruments","Luggage",3981.57,0,0],["Sports","Home Improvement",93664.31,12330.39,0.13],["Accessories","Biss",3461.49,0,0],["Food Service & Grocery","Grocery",1344.34,0,0],["","Grocery",1105313.7,34357.64,0.03],["Other","Apparel",136996.73,1358.14,0.01],["Home Improvement","Home",195035.71,21458.95,0.11],["Furniture","Video Games",7564.74,0,0],["Other","Beauty",69979.18,2911.21,0.04],["Kitchen","Baby",387.78,0,0],["PC","Camera",13870.71,0,0],["Baby","Apparel",8607.72,409.03,0.05],["Home","Lawn and Garden",203288.24,30480.64,0.15],["Luggage","Automotive",218.48,0,0],["Camera","Biss",21370.96,23.02,0],["Pet Products","Office Products",17390.21,2270.25,0.13],["Shoes","Health & Personal Care",1368.2,193.29,0.14],["Art and Craft Supplies","Sports",446.24,0,0],["Medical","Health & Personal Care",2909.62,0,0],["","Shoes",2325174.14,90348.88,0.04],["Electronics","Camera",195399.32,92651.86,0.47],["Bath","Home Improvement",3961.21,0,0],["Accessories","Office Products",4447.01,0,0],["Lawn and Garden","Apparel",37181.78,2068.44,0.06],["Sports","Office Products",40944.95,827.99,0.02],["","Coins_Collectibles",95.87,0,0],["Other","Home",594645.67,61144.55,0.10],["Outdoors","Apparel",1059.8,91.99,0.09],["Musical Instruments","Health & Personal Care",53.28,0,0],["Musical Instruments","Books",317.69,0,0],["Business Industrial","Toys",11472.42,0,0],["PC","Shoes",366.61,0,0],["","Sports",4922503.12,790622.64,0.16],["Baby","Home Improvement",22781.87,1832.52,0.08],["Apparel","Wireless",10649.92,292.49,0.03],["Other","Wireless",423249.83,46669.43,0.11],["PC","Biss",235406.93,17533.81,0.07],["Beauty","Outdoors",175.28,9.43,0.05],["Other","Lawn and Garden",49148.91,5143.86,0.10],["Other","Automotive",65679.03,2841.82,0.04],["Camera","Electronics",547159.39,257779.33,0.47],["Musical Instruments","Home",83028.77,10486.83,0.13],["Home Improvement","Camera",786.62,0,0],["Home Décor","Toys",1413.87,0,0],["Home","Watches",1863.75,0,0],["Consumables","Grocery",6653.7,0,0],["Baby","Personal_Care_Appliances",128828.72,29887.93,0.23],["Health & Personal Care","Furniture",131.45,0,0],["Beauty","Automotive",30372.84,463.3,0.02],["Kitchen","PC",282.68,0,0],["Kitchen","Lawn and Garden",42763.78,1306,0.03],["Apparel","Luggage",273218.84,101539.33,0.37],["Automotive","Outdoors",1650.26,0,0],["","Digital_Accessories",679.4,0,0],["Kitchen","Shoes",2815.83,0,0],["Kitchen & Dining","Health & Personal Care",13841.95,354.82,0.03],["Tools","Camera",3614.44,0,0],["Electronics & Accessories","Kitchen",121.06,0,0],["Beauty & Personal Care","Beauty",18677.44,2583.75,0.14],["Major Appliances","Tools",1138.88,0,0],["Beauty","Apparel",27691.27,0,0],["Office Products","PC",24021.23,3773.19,0.16],["Electronics","Health & Personal Care",44542.83,6078.27,0.14]
+];
+
+// ============================================
+// CHANGE 1: Deals lookup uses normCat for keys
+// ============================================
+const PL_DEALS_LOOKUP = {};
+(function buildDealsLookup() {
+    var byPgDesc = {};
+    PL_DEALS_RAW.forEach(function(row) {
+        var pgDesc = normCat(row[1]);
+        if (!pgDesc) return;
+        if (!byPgDesc[pgDesc]) byPgDesc[pgDesc] = { totalGms: 0, totalPromoGms: 0 };
+        byPgDesc[pgDesc].totalGms += (row[2] || 0);
+        byPgDesc[pgDesc].totalPromoGms += (row[3] || 0);
+    });
+    Object.keys(byPgDesc).forEach(function(pg) {
+        var d = byPgDesc[pg];
+        PL_DEALS_LOOKUP[pg] = {
+            totalGms: d.totalGms,
+            totalPromoGms: d.totalPromoGms,
+            deal_contribution_pct: d.totalGms > 0 ? d.totalPromoGms / d.totalGms : 0
+        };
+    });
+    var bySfCat = {};
+    PL_DEALS_RAW.forEach(function(row) {
+        var sfCat = normCat(row[0]);
+        if (!sfCat) return;
+        if (!bySfCat[sfCat]) bySfCat[sfCat] = { totalGms: 0, totalPromoGms: 0 };
+        bySfCat[sfCat].totalGms += (row[2] || 0);
+        bySfCat[sfCat].totalPromoGms += (row[3] || 0);
+    });
+    Object.keys(bySfCat).forEach(function(cat) {
+        var d = bySfCat[cat];
+        if (!PL_DEALS_LOOKUP[cat]) {
+            PL_DEALS_LOOKUP[cat] = {
+                totalGms: d.totalGms,
+                totalPromoGms: d.totalPromoGms,
+                deal_contribution_pct: d.totalGms > 0 ? d.totalPromoGms / d.totalGms : 0
+            };
+        }
+    });
+})();
+
+const DEALS_SIGNIFICANT_THRESHOLD = 0.12;
+
+// ============================================
+// MARKETPLACE MAPPINGS
+// ============================================
+const MARKETPLACE_ID_TO_CODE = {
+    '1':'US','3':'UK','4':'DE','5':'FR','35691':'IT','44551':'ES',
+    '328451':'NL','704403121':'SE','679831071':'BE','712115121':'PL',
+    '753556201':'IE','44571':'IN','3240':'CN','526970':'BR',
+    '771770':'MX','111172':'AU','338801':'AE','338811':'SA',
+    '338851':'TR','104444012':'SG','623225021':'EG'
+};
+const MARKETPLACE_CODE_TO_NAME = {
+    'US':'US','UK':'UK','DE':'DE','FR':'FR','IT':'IT','ES':'ES',
+    'NL':'NL','SE':'SE','BE':'BE','PL':'PL','IE':'IE'
+};
+const EU_MARKETPLACES = ['UK','DE','FR','IT','ES','NL','SE','BE','PL','IE'];
+
+// ============================================
+// CHANGE 2: OPF bounds [0.1, 1.0]
+// ============================================
+const OPF_MIN = 0.1;
+const OPF_MAX = 1.0;
+
+const ANCHOR_SHARE_THRESHOLD = 0.20;
+const NEW_SELLER_MAX_YOY = 0.30;
+
+// ============================================
+// GLOBALS
+// ============================================
+let sellerCategoryData = null;
+let categoryGrowthData = null;
+let asinFeeRawData = null;
+let asinFeeHeaders = null;
+let allSellerResults = {};
+let debugLog = [];
+let currentDisplayedSeller = null;
+let detectedMerchantIds = [];
+
+// ============================================
+// FEE FILE COLUMN INDEX HELPER
+// ============================================
+function colToIndex(col) {
+    col = col.toUpperCase();
+    let idx = 0;
+    for (let i = 0; i < col.length; i++) idx = idx * 26 + (col.charCodeAt(i) - 64);
+    return idx - 1;
+}
+const FEE_COLUMNS = {
+    merchant_id: colToIndex('B'), asin: colToIndex('A'),
+    de_asp_usd: colToIndex('L'), pl_asp_zloti: colToIndex('W'),
+    de_fulfillment: colToIndex('R'), pl_fulfillment: colToIndex('AC'),
+    fulfillment_diff: colToIndex('AS'), de_referral: colToIndex('T'),
+    pl_referral: colToIndex('AE'), referral_diff: colToIndex('AT'),
+    total_diff: colToIndex('AU'), total_percent: colToIndex('AW'),
+    efn_fulfillment: colToIndex('AN'), efn_referral: colToIndex('AP'),
+    efn_total: colToIndex('AR'), efn_vs_pl_diff: colToIndex('AX')
+};
+
+// ============================================
+// INITIALIZATION
+// ============================================
+document.addEventListener('DOMContentLoaded', function() {
+    setupFileInputs();
+    log('Page initialized. Deals lookup categories: ' + Object.keys(PL_DEALS_LOOKUP).length);
+});
+
+function log(msg) {
+    debugLog.push('[' + new Date().toLocaleTimeString() + '] ' + msg);
+    console.log(msg);
+}
+
+function toggleIdMode() {
+    var mode = document.querySelector('input[name="idMode"]:checked').value;
+    document.getElementById('manualIdGroup').style.display = mode === 'manual' ? 'block' : 'none';
+    if (mode === 'auto' && detectedMerchantIds.length > 0) {
+        document.getElementById('detectedIdsBox').classList.add('visible');
+    } else if (mode === 'manual') {
+        document.getElementById('detectedIdsBox').classList.remove('visible');
+    }
+}
+
+function setupFileInputs() {
+    document.getElementById('sellerCatFile').addEventListener('change', function() {
+        if (this.files[0]) processGenericFile(this.files[0], 'sellerCat');
+    });
+    document.getElementById('catGrowthFile').addEventListener('change', function() {
+        if (this.files[0]) processGenericFile(this.files[0], 'catGrowth');
+    });
+    document.getElementById('asinFeeFile').addEventListener('change', function() {
+        if (this.files[0]) processGenericFile(this.files[0], 'asinFee');
+    });
+}
+
+// ============================================
+// UNIVERSAL FILE PARSER
+// ============================================
+function processGenericFile(file, type) {
+    log('Processing [' + type + ']: ' + file.name);
+    var ext = file.name.split('.').pop().toLowerCase();
+    var isExcel = (ext === 'xlsx' || ext === 'xls');
+
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            var rows;
+            if (isExcel) {
+                var data = new Uint8Array(e.target.result);
+                var wb = XLSX.read(data, {type:'array'});
+                rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1, defval:''});
+            } else {
+                var text = e.target.result;
+                var firstLine = text.split(/\r?\n/)[0] || '';
+                var tabCount = (firstLine.match(/\t/g) || []).length;
+                var commaCount = (firstLine.match(/,/g) || []).length;
+                var delimiter = tabCount > commaCount ? '\t' : ',';
+                rows = text.split(/\r?\n/).filter(function(l){return l.trim();}).map(function(line) {
+                    if (delimiter === ',') return parseCSVLine(line);
+                    return line.split('\t');
+                });
+            }
+            log('Parsed ' + rows.length + ' rows from ' + file.name + ' (type=' + type + ')');
+            if (type === 'sellerCat') handleSellerCatData(rows, file.name);
+            else if (type === 'catGrowth') handleCatGrowthData(rows, file.name);
+            else if (type === 'asinFee') handleAsinFeeData(rows, file.name);
+        } catch(err) {
+            log('ERROR processing ' + file.name + ': ' + err.message);
+            alert('Error processing ' + file.name + ': ' + err.message);
+        }
+    };
+    if (isExcel) reader.readAsArrayBuffer(file);
+    else reader.readAsText(file);
+}
+
+function parseCSVLine(line) {
+    var result = [], current = '', inQ = false;
+    for (var i = 0; i < line.length; i++) {
+        if (line[i] === '"') inQ = !inQ;
+        else if (line[i] === ',' && !inQ) { result.push(current); current = ''; }
+        else current += line[i];
+    }
+    result.push(current);
+    return result;
+}
+
+function rowsToObjects(rows) {
+    if (rows.length < 2) return [];
+    var headers = rows[0].map(function(h) {
+        return String(h||'').trim().toLowerCase().replace(/\s+/g,'_').replace(/[()%$]/g,'').replace(/[^a-z0-9_]/g,'');
+    });
+    var data = [];
+    for (var i = 1; i < rows.length; i++) {
+        var row = {};
+        headers.forEach(function(h, idx) { row[h] = (rows[i][idx] !== undefined && rows[i][idx] !== null) ? String(rows[i][idx]).trim() : ''; });
+        data.push(row);
+    }
+    return data;
+}
+
+// ============================================
+// HANDLER: Seller Category Performance
+// ============================================
+function handleSellerCatData(rows, filename) {
+    sellerCategoryData = rowsToObjects(rows);
+    log('Seller cat data: ' + sellerCategoryData.length + ' rows. Headers: ' + Object.keys(sellerCategoryData[0] || {}).join(', '));
+    var idSet = new Set();
+    sellerCategoryData.forEach(function(row) {
+        var sid = String(row.seller_id || row.merchant_customer_id || row.merchant_id || '').trim().split('.')[0];
+        if (sid && sid.length > 3) idSet.add(sid);
+    });
+    detectedMerchantIds = Array.from(idSet);
+    log('Auto-detected ' + detectedMerchantIds.length + ' merchant IDs: ' + detectedMerchantIds.join(', '));
+    document.getElementById('sellerCatLabel').classList.add('uploaded');
+    document.getElementById('sellerCatStatus').innerHTML = '✅ ' + filename + ' (' + sellerCategoryData.length + ' rows)';
+    document.getElementById('sellerCatStatus').classList.add('success');
+    var mode = document.querySelector('input[name="idMode"]:checked').value;
+    if (detectedMerchantIds.length > 0 && mode === 'auto') {
+        var box = document.getElementById('detectedIdsBox');
+        box.classList.add('visible');
+        document.getElementById('detectedIdsList').innerHTML = detectedMerchantIds.map(function(id) {
+            return '<span class="id-chip">' + id + '</span>';
+        }).join('');
+        box.querySelector('p').textContent = 'Found ' + detectedMerchantIds.length + ' unique seller(s). All will be analyzed.';
+    }
+}
+
+// ============================================
+// HANDLER: Category Growth Data
+// Columns: A=Marketplace Name, B=SF Primary Category,
+// C=Net Ordered GMS($) T12M, D=Net Ordered GMS($)(YoY%),
+// E=Net Ordered Units T12M, F=Net Ordered Units(YoY%)
+// ============================================
+function handleCatGrowthData(rows, filename) {
+    categoryGrowthData = [];
+    for (var i = 1; i < rows.length; i++) {
+        var r = rows[i];
+        if (!r || r.length < 3) continue;
+        var mkt = String(r[0] || '').trim();
+        var sfCat = String(r[1] || '').trim();
+        var gmsTTM = parseMoneyValue(r[2]);
+        var gmsYoY = parsePercentOrDecimal(r[3]);
+        var unitsTTM = parseNumberValue(r[4]);
+        var unitsYoY = parsePercentOrDecimal(r[5]);
+        if (!mkt) continue;
+        categoryGrowthData.push({
+            marketplace_name: mkt,
+            sf_primary_category: sfCat,
+            net_ordered_gms_ttm: gmsTTM,
+            net_ordered_gms_yoy: gmsYoY,
+            net_ordered_units_ttm: unitsTTM,
+            net_ordered_units_yoy: unitsYoY
+        });
+    }
+    log('Category growth data: ' + categoryGrowthData.length + ' rows loaded');
+    document.getElementById('catGrowthLabel').classList.add('uploaded');
+    document.getElementById('catGrowthStatus').innerHTML = '✅ ' + filename + ' (' + categoryGrowthData.length + ' rows)';
+    document.getElementById('catGrowthStatus').classList.add('success');
+}
+
+// ============================================
+// HANDLER: Combined ASIN + Fee File
+// ============================================
+function handleAsinFeeData(rows, filename) {
+    asinFeeRawData = rows;
+    if (rows.length > 0) {
+        asinFeeHeaders = rows[0].map(function(h) {
+            return String(h||'').trim().toLowerCase().replace(/\s+/g,'_').replace(/[()%$]/g,'').replace(/[^a-z0-9_]/g,'');
+        });
+    }
+    log('ASIN+Fee data: ' + rows.length + ' rows, ' + (rows[0]||[]).length + ' columns');
+    document.getElementById('asinFeeLabel').classList.add('uploaded');
+    document.getElementById('asinFeeStatus').innerHTML = '✅ ' + filename + ' (' + (rows.length - 1) + ' data rows)';
+    document.getElementById('asinFeeStatus').classList.add('success');
+}
+
+// ============================================
+// VALUE HELPERS
+// ============================================
+function parseMoneyValue(v) {
+    if (v === null || v === undefined || v === '' || v === '-') return 0;
+    var n = parseFloat(String(v).replace(/[$,\s"'€£zł]/gi,''));
+    return isNaN(n) ? 0 : n;
+}
+function parsePercentOrDecimal(v) {
+    if (v === null || v === undefined || String(v).trim() === '' || v === '-' || v === '#DIV/0!') return null;
+    var s = String(v).trim().replace(/['"]/g,'');
+    if (s.indexOf('%') !== -1) {
+        var n = parseFloat(s.replace('%',''));
+        return isNaN(n) ? null : n / 100;
+    }
+    var n2 = parseFloat(s);
+    if (isNaN(n2)) return null;
+    if (Math.abs(n2) > 5) return n2 / 100;
+    return n2;
+}
+function parsePercentValue(v) {
+    if (!v || v==='' || v==='-' || v==='#DIV/0!') return null;
+    var n = parseFloat(String(v).replace(/[%\s"']/g,''));
+    return isNaN(n) ? null : n/100;
+}
+function parseNumberValue(v) {
+    if (v === null || v === undefined || v === '' || v === '-') return 0;
+    var n = parseFloat(String(v).replace(/[,\s"']/g,''));
+    return isNaN(n) ? 0 : n;
+}
+function getMarketplaceCode(raw) {
+    if (!raw) return null;
+    var c = String(raw).trim().split('.')[0];
+    if (MARKETPLACE_ID_TO_CODE[c]) return MARKETPLACE_ID_TO_CODE[c];
+    var u = c.toUpperCase();
+    if (EU_MARKETPLACES.includes(u)) return u;
+    var nameMap = {'UNITED KINGDOM':'UK','GERMANY':'DE','FRANCE':'FR','ITALY':'IT','SPAIN':'ES','NETHERLANDS':'NL','SWEDEN':'SE','BELGIUM':'BE','POLAND':'PL','IRELAND':'IE'};
+    if (nameMap[u]) return nameMap[u];
+    return c;
+}
+function formatCurrency(v) {
+    if (v===null||v===undefined||isNaN(v)) return 'N/A';
+    return '$'+v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function formatPercent(v) {
+    if (v===null||v===undefined||isNaN(v)) return 'N/A';
+    return (v*100).toFixed(2)+'%';
+}
+function formatNumber(v) {
+    if (v===null||v===undefined||isNaN(v)) return 'N/A';
+    return v.toLocaleString('en-US',{maximumFractionDigits:0});
+}
+
+// ============================================
+// SAFE YOY PARSING
+// ============================================
+function parseSellerYoY(rawValue, marketYoY) {
+    if (rawValue === null || rawValue === undefined || String(rawValue).trim() === '' || rawValue === '-') {
+        var fallback;
+        if (marketYoY !== null && marketYoY !== undefined && !isNaN(marketYoY)) {
+            fallback = Math.min(marketYoY, NEW_SELLER_MAX_YOY);
+            if (fallback < 0) fallback = 0;
+        } else {
+            fallback = NEW_SELLER_MAX_YOY;
+        }
+        return { value: fallback, isNewSeller: true };
+    }
+    var parsed = parsePercentValue(rawValue);
+    if (parsed === null) {
+        var fallback2 = (marketYoY !== null && !isNaN(marketYoY)) ? Math.min(Math.max(marketYoY, 0), NEW_SELLER_MAX_YOY) : NEW_SELLER_MAX_YOY;
+        return { value: fallback2, isNewSeller: true };
+    }
+    return { value: parsed, isNewSeller: false };
+}
+
+// ============================================
+// CHANGE 2: OPF — removed Market YoY ≤ 2% exception
+// Only protect against divide-by-zero
+// ============================================
+function computeOPF(sellerYoY, marketYoY) {
+    if (marketYoY === null || marketYoY === undefined || isNaN(marketYoY) || marketYoY === 0) {
+        return 1.0;
+    }
+    var raw = sellerYoY / marketYoY;
+    return Math.max(OPF_MIN, Math.min(OPF_MAX, raw));
+}
+
+// ============================================
+// ASIN DATA EXTRACTION
+// ============================================
+function extractAsinDataForSeller(merchantId) {
+    if (!asinFeeRawData || asinFeeRawData.length < 2 || !asinFeeHeaders) return [];
+    var hdr = asinFeeHeaders;
+    var asinCol = findColIndex(hdr, ['asin']);
+    var midCol = findColIndex(hdr, ['seller_id','merchant_customer_id','merchant_id']);
+    var catCol = findColIndex(hdr, ['sf_primary_category','category_description','category']);
+    var gmsCol = findColIndex(hdr, ['net_ordered_gms_2025','net_ordered_gms','gms','net_ordered_gms_ttm']);
+    var unitsCol = findColIndex(hdr, ['net_ordered_units_2025','net_ordered_units','units','net_ordered_units_ttm']);
+    if (asinCol === -1 || midCol === -1) return [];
+    var results = [];
+    for (var i = 1; i < asinFeeRawData.length; i++) {
+        var row = asinFeeRawData[i];
+        if (!row) continue;
+        var sid = String(row[midCol] || '').trim().split('.')[0];
+        if (sid !== String(merchantId).split('.')[0]) continue;
+        var asin = String(row[asinCol] || '').trim();
+        if (!asin) continue;
+        results.push({
+            asin: asin,
+            category: catCol >= 0 ? normCat(row[catCol]) : 'unknown',
+            gms: gmsCol >= 0 ? parseMoneyValue(row[gmsCol]) : 0,
+            units: unitsCol >= 0 ? parseNumberValue(row[unitsCol]) : 0,
+            rawRow: row
+        });
+    }
+    return results;
+}
+
+function findColIndex(headers, candidates) {
+    for (var c = 0; c < candidates.length; c++) {
+        for (var i = 0; i < headers.length; i++) {
+            if (headers[i] === candidates[c] || headers[i].indexOf(candidates[c]) !== -1) return i;
+        }
+    }
+    return -1;
+}
+
+// ============================================
+// FEE DATA EXTRACTION
+// ============================================
+function extractFeeDataForSeller(merchantId) {
+    if (!asinFeeRawData || asinFeeRawData.length < 2) return null;
+    var colCount = (asinFeeRawData[0] || []).length;
+    var minFeeCol = Math.max(FEE_COLUMNS.de_fulfillment, FEE_COLUMNS.pl_fulfillment, FEE_COLUMNS.efn_fulfillment);
+    if (colCount <= minFeeCol) {
+        log('Fee columns not found in ASIN file (only ' + colCount + ' cols). Skipping fee analysis.');
+        return null;
+    }
+    var fees = [];
+    for (var i = 1; i < asinFeeRawData.length; i++) {
+        var row = asinFeeRawData[i];
+        if (!row || row.length === 0) continue;
+        var mid = String(row[FEE_COLUMNS.merchant_id] || '').trim().split('.')[0];
+        if (mid !== String(merchantId).split('.')[0]) continue;
+        var asin = String(row[FEE_COLUMNS.asin] || '').trim();
+        if (!asin) continue;
+        var deFulfillment = parseFloat(row[FEE_COLUMNS.de_fulfillment]) || 0;
+        var plFulfillment = parseFloat(row[FEE_COLUMNS.pl_fulfillment]) || 0;
+        var deReferral = parseFloat(row[FEE_COLUMNS.de_referral]) || 0;
+        var plReferral = parseFloat(row[FEE_COLUMNS.pl_referral]) || 0;
+        var efnFulfillment = parseFloat(row[FEE_COLUMNS.efn_fulfillment]) || 0;
+        var efnReferral = parseFloat(row[FEE_COLUMNS.efn_referral]) || 0;
+        var efnTotal = parseFloat(row[FEE_COLUMNS.efn_total]) || 0;
+        if (deFulfillment === 0 && plFulfillment === 0 && efnFulfillment === 0) continue;
+        fees.push({
+            asin: asin,
+            deFulfillment: deFulfillment, plFulfillment: plFulfillment,
+            fulfillmentDiff: plFulfillment - deFulfillment,
+            deReferral: deReferral, plReferral: plReferral,
+            referralDiff: plReferral - deReferral,
+            totalDiff: (plFulfillment - deFulfillment) + (plReferral - deReferral),
+            efnFulfillment: efnFulfillment, efnReferral: efnReferral, efnTotal: efnTotal,
+            plTotal: plFulfillment + plReferral,
+            efnVsPlDiff: efnFulfillment - plFulfillment
+        });
+    }
+    if (fees.length === 0) return null;
+    var totalPlFees = 0, totalEfnFees = 0, totalDeFees = 0;
+    var plWins = 0, efnWins = 0;
+    fees.forEach(function(f) {
+        totalPlFees += f.plTotal;
+        totalEfnFees += f.efnTotal;
+        totalDeFees += f.deFulfillment + f.deReferral;
+        if (f.plFulfillment < f.efnFulfillment) plWins++;
+        else if (f.efnFulfillment < f.plFulfillment) efnWins++;
+    });
+    return {
+        items: fees, totalPlFees: totalPlFees, totalEfnFees: totalEfnFees,
+        totalDeFees: totalDeFees, plWins: plWins, efnWins: efnWins,
+        count: fees.length, plVsEfnDiff: totalEfnFees - totalPlFees,
+        plCheaper: totalPlFees < totalEfnFees
+    };
+}
+
+// ============================================
+// MAIN ANALYSIS
+// ============================================
+function runAnalysis() {
+    debugLog = [];
+    log('=== Starting Multi-Seller Analysis ===');
+    var rampRate = parseFloat(document.getElementById('rampRate').value) || 0.20;
+    if (!sellerCategoryData) { showError('Please upload the Seller Category Performance file (required).'); return; }
+    if (!categoryGrowthData) { showError('Please upload the Category Growth Data file (required).'); return; }
+    var mode = document.querySelector('input[name="idMode"]:checked').value;
+    var merchantIds;
+    if (mode === 'manual') {
+        var merchantIdsRaw = document.getElementById('merchantIds').value.trim();
+        if (!merchantIdsRaw) { showError('Please enter at least one Merchant ID.'); return; }
+        merchantIds = merchantIdsRaw.split(',').map(function(s) { return s.trim().split('.')[0]; }).filter(function(s) { return s.length > 0; });
+    } else {
+        if (detectedMerchantIds.length === 0) { showError('No merchant IDs detected from the uploaded file. Try entering them manually.'); return; }
+        merchantIds = detectedMerchantIds.slice();
+    }
+    log('Sellers to analyze: ' + merchantIds.join(', ') + ' (mode=' + mode + ')');
+    log('Category growth rows: ' + categoryGrowthData.length);
+    log('ASIN+Fee file: ' + (asinFeeRawData ? (asinFeeRawData.length - 1) + ' data rows' : 'not uploaded'));
+    document.getElementById('loadingSection').classList.add('visible');
+    document.getElementById('resultsSection').classList.remove('visible');
+    document.getElementById('errorMessage').classList.remove('visible');
+    setTimeout(function() {
+        try {
+            allSellerResults = {};
+            merchantIds.forEach(function(mid) {
+                log('--- Analyzing seller: ' + mid + ' ---');
+                allSellerResults[mid] = calculatePLOpportunity(mid, rampRate);
+            });
+            displayMultiSellerResults(merchantIds);
+            document.getElementById('loadingSection').classList.remove('visible');
+            document.getElementById('resultsSection').classList.add('visible');
+            log('=== All analyses complete ===');
+            updateDebugSection();
+        } catch(err) {
+            document.getElementById('loadingSection').classList.remove('visible');
+            showError('Error: ' + err.message + '\n' + err.stack);
+            log('FATAL: ' + err.message);
+            updateDebugSection();
+        }
+    }, 100);
+}
+
+function showError(msg) {
+    document.getElementById('errorText').textContent = msg;
+    document.getElementById('errorMessage').classList.add('visible');
+}
+function updateDebugSection() {
+    document.getElementById('debugSection').innerHTML = '<pre>' + debugLog.join('\n') + '</pre>';
+}
+
+// ============================================
+// CORE CALCULATION ENGINE
+// ============================================
+function calculatePLOpportunity(merchantId, rampRate) {
+    var marketCategoryYoY = {};
+    var plCategoryYoY = {};
+    var catDisplayName = {};
+
+    // CHANGE 1: normalize categories from growth file
+    categoryGrowthData.forEach(function(row) {
+        var mkt = getMarketplaceCode(row.marketplace_name);
+        var cat = normCat(row.sf_primary_category);
+        if (!mkt || !cat) return;
+        if (!catDisplayName[cat]) catDisplayName[cat] = String(row.sf_primary_category || '').trim();
+        var key = mkt + '|' + cat;
+        if (!marketCategoryYoY[key]) {
+            marketCategoryYoY[key] = { gmsYoY: row.net_ordered_gms_yoy, unitsYoY: row.net_ordered_units_yoy, gmsTTM: row.net_ordered_gms_ttm };
+        } else {
+            marketCategoryYoY[key].gmsTTM += row.net_ordered_gms_ttm;
+        }
+        if (mkt === 'PL') {
+            if (!plCategoryYoY[cat]) {
+                plCategoryYoY[cat] = { gmsYoY: row.net_ordered_gms_yoy, unitsYoY: row.net_ordered_units_yoy };
+            }
+        }
+    });
+
+    log('Market YoY lookup: ' + Object.keys(marketCategoryYoY).length + ' keys. PL categories: ' + Object.keys(plCategoryYoY).length);
+
+    var sellerFiltered = sellerCategoryData.filter(function(row) {
+        var sid = String(row.seller_id || row.merchant_customer_id || row.merchant_id || '').split('.')[0];
+        return sid === merchantId;
+    });
+    log('Seller ' + merchantId + ': ' + sellerFiltered.length + ' rows');
+
+    if (sellerFiltered.length === 0) {
+        return { error: 'No data found for seller ' + merchantId, summary: null, byCategory: [], topAsins: [], roadmap: '', notes: ['No data'] };
+    }
+
+    var sellerData = {};
+    var categories = new Set();
+
+    // CHANGE 1: normalize seller categories
+    sellerFiltered.forEach(function(row) {
+        var mkt = getMarketplaceCode(row.marketplace_id || row.marketplace || '');
+        var cat = normCat(row.sf_primary_category || row.category_description || '');
+        if (!mkt || !cat) return;
+        if (!catDisplayName[cat]) catDisplayName[cat] = String(row.sf_primary_category || row.category_description || '').trim();
+        categories.add(cat);
+        var key = mkt + '|' + cat;
+        var gms = parseMoneyValue(row.net_ordered_gms_2025 || row.net_ordered_gms || row.gms || row.net_ordered_gms_ttm || 0);
+        var units = parseNumberValue(row.net_ordered_units_2025 || row.net_ordered_units || row.units || row.net_ordered_units_ttm || 0);
+        var rawYoY = row.yoy_gms_growth_pct || row.yoy_gms_growth || row.gms_yoy || row.net_ordered_gms_yoy || '';
+        var mktData = marketCategoryYoY[mkt + '|' + cat];
+        var mktYoY = mktData ? mktData.gmsYoY : null;
+        var yoyResult = parseSellerYoY(rawYoY, mktYoY);
+        if (!sellerData[key]) {
+            sellerData[key] = { gms: 0, units: 0, yoyGms: yoyResult.value, isNewSeller: yoyResult.isNewSeller };
+        }
+        sellerData[key].gms += gms;
+        sellerData[key].units += units;
+    });
+
+    var euBaselineGmsByCat = {}, euBaselineUnitsByCat = {};
+    var eu9TotalGms = 0;
+    Object.keys(sellerData).forEach(function(key) {
+        var parts = key.split('|'), mkt = parts[0], cat = parts[1];
+        if (!euBaselineGmsByCat[cat]) { euBaselineGmsByCat[cat] = 0; euBaselineUnitsByCat[cat] = 0; }
+        euBaselineGmsByCat[cat] += sellerData[key].gms;
+        euBaselineUnitsByCat[cat] += sellerData[key].units;
+        if (mkt !== 'PL') eu9TotalGms += sellerData[key].gms;
+    });
+
+    var categoryDetails = [];
+    var plGmsYear1ByCat = {}, plUnitsYear1ByCat = {};
+    var newSellerEntries = [];
+
+    Array.from(categories).forEach(function(cat) {
+        var detail = {
+            category: catDisplayName[cat] || cat, anchorMarketplace: null, sellerYoyAnchor: null,
+            sellerYoyIsNew: false, marketYoyAnchor: null, plMarketYoy: null,
+            opf: null, expectedPlYoy: null, euBaselineGms: euBaselineGmsByCat[cat] || 0,
+            plGmsYear1: 0, euBaselineUnits: euBaselineUnitsByCat[cat] || 0, plUnitsYear1: 0,
+            dealContributionPct: null, dealsSignificant: false, notes: []
+        };
+
+        var euCatGms = euBaselineGmsByCat[cat] || 0;
+        if (euCatGms <= 0) { detail.notes.push('No EU GMS'); categoryDetails.push(detail); return; }
+        if (!plCategoryYoY[cat]) { detail.notes.push('No PL market data for "' + (catDisplayName[cat] || cat) + '"'); categoryDetails.push(detail); return; }
+
+        detail.plMarketYoy = plCategoryYoY[cat].gmsYoY;
+
+        // CHANGE 1: deals lookup uses normalized key
+        if (PL_DEALS_LOOKUP[cat]) {
+            detail.dealContributionPct = PL_DEALS_LOOKUP[cat].deal_contribution_pct;
+            detail.dealsSignificant = detail.dealContributionPct >= DEALS_SIGNIFICANT_THRESHOLD;
+        }
+
+        var candidates = [];
+        Object.keys(sellerData).forEach(function(key) {
+            var parts = key.split('|'), mkt = parts[0], c = parts[1];
+            if (c !== cat || mkt === 'PL') return;
+            var sd = sellerData[key];
+            var mktData = marketCategoryYoY[mkt + '|' + cat];
+            var mktYoY = mktData ? mktData.gmsYoY : null;
+            if (mktYoY === null) return;
+            var mktShare = euCatGms > 0 ? sd.gms / euCatGms : 0;
+            candidates.push({
+                mkt: mkt, gms: sd.gms, mktShare: mktShare,
+                sellerYoy: sd.yoyGms, marketYoy: mktYoY,
+                isNewSeller: sd.isNewSeller,
+                yoyDiffToPl: Math.abs(mktYoY - (detail.plMarketYoy || 0))
+            });
+        });
+
+        if (candidates.length === 0) { detail.notes.push('No anchor candidates'); categoryDetails.push(detail); return; }
+
+        // CHANGE 2: removed positiveMarket filter entirely
+        var qualified = candidates.filter(function(c) { return c.mktShare >= ANCHOR_SHARE_THRESHOLD; });
+        if (qualified.length === 0) {
+            qualified = [candidates.reduce(function(a, b) { return a.gms > b.gms ? a : b; })];
+            detail.notes.push('Fallback anchor (highest GMS)');
+        }
+        var anchor = qualified.reduce(function(a, b) { return a.yoyDiffToPl < b.yoyDiffToPl ? a : b; });
+
+        detail.anchorMarketplace = anchor.mkt;
+        detail.sellerYoyAnchor = anchor.sellerYoy;
+        detail.sellerYoyIsNew = anchor.isNewSeller;
+        detail.marketYoyAnchor = anchor.marketYoy;
+
+        if (anchor.isNewSeller) {
+            detail.notes.push('New seller (conservative fallback YoY=' + (anchor.sellerYoy * 100).toFixed(1) + '%)');
+            newSellerEntries.push({ category: cat, marketplace: anchor.mkt });
+        }
+
+        detail.opf = computeOPF(anchor.sellerYoy, anchor.marketYoy);
+
+        detail.expectedPlYoy = detail.plMarketYoy * detail.opf;
+        detail.plGmsYear1 = detail.euBaselineGms * rampRate * (1 + detail.expectedPlYoy);
+        detail.plUnitsYear1 = detail.euBaselineUnits * rampRate * (1 + detail.expectedPlYoy);
+
+        plGmsYear1ByCat[cat] = detail.plGmsYear1;
+        plUnitsYear1ByCat[cat] = detail.plUnitsYear1;
+        categoryDetails.push(detail);
+    });
+
+    var totalPlGmsYear1 = 0, totalPlUnitsYear1 = 0;
+    Object.keys(plGmsYear1ByCat).forEach(function(k) { totalPlGmsYear1 += plGmsYear1ByCat[k]; });
+    Object.keys(plUnitsYear1ByCat).forEach(function(k) { totalPlUnitsYear1 += plUnitsYear1ByCat[k]; });
+
+    var weightSum = 0, contribSum = 0;
+    Object.keys(sellerData).forEach(function(key) {
+        var mkt = key.split('|')[0];
+        if (mkt !== 'PL') {
+            var sd = sellerData[key];
+            weightSum += sd.gms;
+            contribSum += sd.gms * sd.yoyGms;
+        }
+    });
+    var eu9WeightedYoy = weightSum > 0 ? contribSum / weightSum : 0;
+    var eu9GmsNextNoPl = eu9TotalGms * (1 + eu9WeightedYoy);
+    var eu9GmsNextWithPl = eu9GmsNextNoPl + totalPlGmsYear1;
+    var upliftPct = eu9GmsNextNoPl > 0 ? totalPlGmsYear1 / eu9GmsNextNoPl : null;
+
+    var asinItems = extractAsinDataForSeller(merchantId);
+    var topAsins = [];
+    if (asinItems.length > 0) {
+        var asinAgg = {};
+        asinItems.forEach(function(item) {
+            if (!asinAgg[item.asin]) asinAgg[item.asin] = { asin: item.asin, category: item.category, gms: 0, units: 0 };
+            asinAgg[item.asin].gms += item.gms;
+            asinAgg[item.asin].units += item.units;
+        });
+        topAsins = Object.values(asinAgg).map(function(d) {
+            var plYoy = plCategoryYoY[d.category] ? plCategoryYoY[d.category].gmsYoY : 0;
+            return { asin: d.asin, category: d.category, euGms: d.gms, euUnits: d.units, plMarketYoy: plYoy, score: d.gms * (1 + (plYoy || 0)) };
+        }).sort(function(a, b) { return b.score - a.score; }).slice(0, 20);
+        log('Top ASINs for ' + merchantId + ': ' + topAsins.length);
+    }
+
+    var feeEstimate = extractFeeDataForSeller(merchantId);
+    if (feeEstimate) log('Fee data for ' + merchantId + ': ' + feeEstimate.count + ' ASINs');
+
+    var topCats = categoryDetails.filter(function(c) { return c.plGmsYear1 > 0; }).sort(function(a, b) { return b.plGmsYear1 - a.plGmsYear1; });
+
+    var roadmap = generateRoadmap(merchantId, totalPlGmsYear1, upliftPct, topCats, feeEstimate, rampRate);
+
+    // CHANGE 2: removed Market YoY threshold note
+    var notes = [
+        'Ramp Rate: ' + (rampRate * 100).toFixed(0) + '%',
+        'OPF bounds: [' + OPF_MIN + ', ' + OPF_MAX + ']',
+        'New seller fallback: min(market YoY, ' + NEW_SELLER_MAX_YOY * 100 + '%)',
+        'Deals significance threshold: ' + DEALS_SIGNIFICANT_THRESHOLD * 100 + '%',
+        'Categories analyzed: ' + categories.size,
+        'PL market categories found: ' + Object.keys(plCategoryYoY).length,
+        newSellerEntries.length > 0 ? 'New seller entries: ' + newSellerEntries.length : '',
+        asinItems.length > 0 ? 'ASINs analyzed: ' + asinItems.length : 'No ASIN data (file not uploaded or no match)',
+        feeEstimate ? 'Fee ASINs: ' + feeEstimate.count : 'No fee data available'
+    ].filter(Boolean);
+
+    return {
+        summary: {
+            merchantId: merchantId, totalPlGmsYear1: totalPlGmsYear1,
+            totalPlUnitsYear1: totalPlUnitsYear1, eu9Gms2025: eu9TotalGms,
+            eu9GmsNextNoPl: eu9GmsNextNoPl, eu9GmsNextWithPl: eu9GmsNextWithPl,
+            incrementalPlGms: totalPlGmsYear1, upliftPct: upliftPct, rampRate: rampRate
+        },
+        byCategory: categoryDetails, topAsins: topAsins,
+        feeEstimate: feeEstimate, roadmap: roadmap, notes: notes
+    };
+}
+
+// ============================================
+// ROADMAP GENERATOR
+// ============================================
+function generateRoadmap(merchantId, totalPlGms, upliftPct, topCats, feeEstimate, rampRate) {
+    var lines = [];
+    lines.push('<h3>📋 Year 1 Poland Seller Roadmap — Merchant ' + merchantId + '</h3>');
+    lines.push('<h4>A. Opportunity Summary</h4>');
+    lines.push('<p>Based on your current EU performance, your projected <span class="highlight-stat">Year 1 PL GMS is ' + formatCurrency(totalPlGms) + '</span>.');
+    if (upliftPct !== null) {
+        lines.push(' This represents an <span class="highlight-stat">uplift of ' + formatPercent(upliftPct) + '</span> on top of your existing EU business.');
+    }
+    lines.push('</p>');
+    if (topCats.length > 0) {
+        var topNames = topCats.slice(0, 3).map(function(c) { return c.category; }).join(', ');
+        lines.push('<p>Your top projected categories in Poland are: <strong>' + topNames + '</strong>.</p>');
+    }
+    lines.push('<h4>B. Cost & Fees Overview</h4>');
+    if (feeEstimate) {
+        lines.push('<div class="fee-box">');
+        lines.push('<p><strong>FBA Local (stock in Poland):</strong> Est. fees ≈ <span class="highlight-stat">' + formatCurrency(feeEstimate.totalPlFees) + '</span></p>');
+        lines.push('<p><strong>EFN (ship from Germany):</strong> Est. fees ≈ <span class="highlight-stat">' + formatCurrency(feeEstimate.totalEfnFees) + '</span></p>');
+        var diff = feeEstimate.plVsEfnDiff;
+        if (feeEstimate.plCheaper) {
+            lines.push('<p>🇵🇱 <strong>FBA Local is more cost-effective</strong>, saving ~' + formatCurrency(Math.abs(diff)) + ' vs EFN across ' + feeEstimate.count + ' ASINs. PL Local wins on ' + feeEstimate.plWins + '; EFN wins on ' + feeEstimate.efnWins + '.</p>');
+        } else {
+            lines.push('<p>🌐 <strong>EFN appears more cost-effective</strong> by ~' + formatCurrency(Math.abs(diff)) + '. FBA Local still wins on ' + feeEstimate.plWins + ' ASINs.</p>');
+        }
+        lines.push('</div>');
+    } else {
+        lines.push('<p><em>No fee data available. Upload the ASIN+Fee file (with fee columns) to see cost analysis.</em></p>');
+    }
+    lines.push('<h4>C. Deals & Promotion Strategy</h4>');
+    var significantDealsCats = topCats.filter(function(c) { return c.dealsSignificant; });
+    if (significantDealsCats.length > 0) {
+        lines.push('<div class="deals-box">');
+        lines.push('<p>In your top projected categories, <strong>deals are a significant sales driver</strong>:</p><ul>');
+        significantDealsCats.slice(0, 5).forEach(function(c) {
+            lines.push('<li><strong>' + c.category + '</strong>: Deals ≈ <span class="highlight-stat">' + (c.dealContributionPct * 100).toFixed(0) + '%</span> of category GMS. Projected: ' + formatCurrency(c.plGmsYear1) + '</li>');
+        });
+        lines.push('</ul><p>Running deals and coupons regularly in these categories is <strong>essential</strong>.</p></div>');
+    } else {
+        var anyCats = topCats.filter(function(c) { return c.dealContributionPct !== null; });
+        if (anyCats.length > 0) {
+            lines.push('<p>Deals contribute a moderate share (~10–12%) in your categories. Promotions during key events will help drive initial traction.</p>');
+        } else {
+            lines.push('<p>Promotions are generally important for new market entry in Poland.</p>');
+        }
+    }
+    lines.push('<h4>D. Concrete Year 1 Next Steps</h4><ul>');
+    if (topCats.length > 0) {
+        lines.push('<li><strong>List top EU products first</strong>, focusing on: ' + topCats.slice(0, 3).map(function(c) { return c.category; }).join(', ') + '.</li>');
+    }
+    lines.push('<li><strong>Confirm VAT registration and compliance</strong> for Poland.</li>');
+    lines.push('<li><strong>Plan promotional calendar</strong>: Prime Day, Black Friday, Polish Independence Day sales.');
+    if (significantDealsCats.length > 0) lines.push(' Use coupons and Lightning Deals regularly.');
+    lines.push('</li>');
+    if (feeEstimate) {
+        if (feeEstimate.plCheaper) {
+            lines.push('<li><strong>Stock inventory in Poland (FBA Local)</strong> — saves ~' + formatCurrency(Math.abs(feeEstimate.plVsEfnDiff)) + ' vs EFN.</li>');
+        } else {
+            lines.push('<li><strong>Evaluate fulfillment carefully.</strong> EFN currently cheaper, but FBA Local offers faster delivery. Consider hybrid.</li>');
+        }
+    } else {
+        lines.push('<li><strong>Decide fulfillment strategy</strong>: FBA Local vs EFN. Upload fee data for comparison.</li>');
+    }
+    lines.push('<li><strong>Optimize listings for Polish market</strong>: translate titles, bullets, descriptions. Use Polish keywords.</li>');
+    if (totalPlGms > 100000) {
+        lines.push('<li><strong>Invest in Sponsored Products</strong> in Poland — projected GMS of ' + formatCurrency(totalPlGms) + ' shows significant upside.</li>');
+    }
+    lines.push('<li><strong>Monitor performance weekly</strong> for first 90 days. Track conversion, returns, ACOS.</li>');
+    lines.push('</ul>');
+    return lines.join('\n');
+}
+
+// ============================================
+// DISPLAY MULTI-SELLER RESULTS
+// ============================================
+function displayMultiSellerResults(merchantIds) {
+    var tabsCard = document.getElementById('sellerTabsCard');
+    var tabsContainer = document.getElementById('sellerTabs');
+    var resultsContainer = document.getElementById('sellerResultsContainer');
+    if (merchantIds.length > 1) {
+        tabsCard.style.display = 'block';
+        tabsContainer.innerHTML = '';
+        merchantIds.forEach(function(mid, idx) {
+            var tab = document.createElement('button');
+            tab.className = 'seller-tab' + (idx === 0 ? ' active' : '');
+            tab.setAttribute('data-seller', mid);
+            var res = allSellerResults[mid];
+            var gmsText = res && res.summary ? ' — ' + formatCurrency(res.summary.totalPlGmsYear1) : res && res.error ? ' ⚠️' : '';
+            tab.textContent = '🏪 ' + mid + gmsText;
+            tab.onclick = function() { switchToSeller(mid); };
+            tabsContainer.appendChild(tab);
+        });
+    } else {
+        tabsCard.style.display = 'none';
+    }
+    resultsContainer.innerHTML = '';
+    merchantIds.forEach(function(mid, idx) {
+        var panel = buildSellerPanel(mid, allSellerResults[mid]);
+        panel.id = 'sellerPanel_' + mid;
+        panel.style.display = idx === 0 ? 'block' : 'none';
+        resultsContainer.appendChild(panel);
+    });
+    currentDisplayedSeller = merchantIds[0];
+}
+
+function switchToSeller(mid) {
+    document.querySelectorAll('.seller-tab').forEach(function(tab) {
+        tab.classList.toggle('active', tab.getAttribute('data-seller') === mid);
+    });
+    Object.keys(allSellerResults).forEach(function(sid) {
+        var panel = document.getElementById('sellerPanel_' + sid);
+        if (panel) panel.style.display = sid === mid ? 'block' : 'none';
+    });
+    currentDisplayedSeller = mid;
+}
+
+// ============================================
+// BUILD SELLER PANEL
+// ============================================
+function buildSellerPanel(merchantId, results) {
+    var container = document.createElement('div');
+    if (results.error) {
+        container.innerHTML = '<div class="card"><h2>⚠️ Seller ' + merchantId + '</h2><p style="color:#e57373;">' + results.error + '</p></div>';
+        return container;
+    }
+    var s = results.summary;
+
+    var summaryHtml = '<div class="card">';
+    summaryHtml += '<h2>📊 Summary — Seller ' + merchantId + '</h2>';
+    summaryHtml += '<div class="summary-grid">';
+    summaryHtml += summaryCardHTML('highlight', s.totalPlGmsYear1, 'Total PL GMS Year 1', formatCurrency);
+    summaryHtml += summaryCardHTML('highlight', s.upliftPct, '🚀 Uplift %', function(v) { return v !== null ? formatPercent(v) : 'N/A'; });
+    summaryHtml += summaryCardHTML('', s.totalPlUnitsYear1, 'Total PL Units Year 1', formatNumber);
+    summaryHtml += summaryCardHTML('', s.eu9GmsNextNoPl, 'EU GMS (No PL) Projected', formatCurrency);
+    summaryHtml += summaryCardHTML('', s.eu9GmsNextWithPl, 'EU GMS (With PL) Projected', formatCurrency);
+    summaryHtml += summaryCardHTML('', s.incrementalPlGms, 'Incremental PL GMS', formatCurrency);
+    if (results.feeEstimate) {
+        var fe = results.feeEstimate;
+        summaryHtml += summaryCardHTML('', fe.totalPlFees, 'Est. PL Fees (Local)', formatCurrency);
+        summaryHtml += summaryCardHTML('', fe.totalEfnFees, 'Est. PL Fees (EFN)', formatCurrency);
+        var feeCompText = fe.plCheaper ? 'PL Local saves ' + formatCurrency(Math.abs(fe.plVsEfnDiff)) : 'EFN saves ' + formatCurrency(Math.abs(fe.plVsEfnDiff));
+        summaryHtml += '<div class="summary-card"><div class="value" style="font-size:1.2em;color:' + (fe.plCheaper ? '#4caf50' : '#ff9800') + '">' + feeCompText + '</div><div class="label">Fee Comparison</div></div>';
+    }
+    summaryHtml += '</div></div>';
+    container.innerHTML += summaryHtml;
+
+    container.innerHTML += '<div class="card"><h2>🗺️ Seller Roadmap — Year 1 in Poland</h2><div class="roadmap-section">' + results.roadmap + '</div></div>';
+
+    var catHtml = '<div class="card"><h2>📦 Category Breakdown</h2>';
+    catHtml += '<p style="color:#64b5f6;margin-bottom:10px;">🆕 = New seller (conservative fallback) | 📊 = Deals significant</p>';
+    catHtml += '<div class="table-container"><table><thead><tr>';
+    catHtml += '<th>Category</th><th>Anchor Mkt</th><th>Seller YoY</th><th>Market YoY</th>';
+    catHtml += '<th>PL Mkt YoY</th><th>OPF</th><th>Exp PL YoY</th><th>EU Baseline</th>';
+    catHtml += '<th>PL Year 1 GMS</th><th>Deals %</th><th>Notes</th>';
+    catHtml += '</tr></thead><tbody>';
+    results.byCategory.sort(function(a, b) { return b.plGmsYear1 - a.plGmsYear1; }).forEach(function(cat) {
+        var sellerYoyDisp = cat.sellerYoyAnchor !== null ? formatPercent(cat.sellerYoyAnchor) : 'N/A';
+        if (cat.sellerYoyIsNew) sellerYoyDisp += ' <span class="new-seller-badge">🆕</span>';
+        var dealsDisp = cat.dealContributionPct !== null ? (cat.dealContributionPct * 100).toFixed(0) + '%' : '-';
+        if (cat.dealsSignificant) dealsDisp = '<strong style="color:#4caf50">' + dealsDisp + ' 📊</strong>';
+        var noteClass = cat.plGmsYear1 > 0 ? (cat.notes.length > 0 ? 'info' : 'success') : 'warning';
+        catHtml += '<tr>';
+        catHtml += '<td>' + cat.category + '</td>';
+        catHtml += '<td>' + (cat.anchorMarketplace || 'N/A') + '</td>';
+        catHtml += '<td>' + sellerYoyDisp + '</td>';
+        catHtml += '<td>' + (cat.marketYoyAnchor !== null ? formatPercent(cat.marketYoyAnchor) : 'N/A') + '</td>';
+        catHtml += '<td>' + (cat.plMarketYoy !== null ? formatPercent(cat.plMarketYoy) : 'N/A') + '</td>';
+        catHtml += '<td>' + (cat.opf !== null ? cat.opf.toFixed(2) : 'N/A') + '</td>';
+        catHtml += '<td>' + (cat.expectedPlYoy !== null ? formatPercent(cat.expectedPlYoy) : 'N/A') + '</td>';
+        catHtml += '<td>' + formatCurrency(cat.euBaselineGms) + '</td>';
+        catHtml += '<td style="color:#4caf50;font-weight:bold">' + formatCurrency(cat.plGmsYear1) + '</td>';
+        catHtml += '<td>' + dealsDisp + '</td>';
+        catHtml += '<td><span class="status ' + noteClass + '">' + (cat.notes.length > 0 ? cat.notes.join('; ') : 'OK') + '</span></td>';
+        catHtml += '</tr>';
+    });
+    catHtml += '</tbody></table></div></div>';
+    container.innerHTML += catHtml;
+
+    if (results.topAsins && results.topAsins.length > 0) {
+        var asinHtml = '<div class="card"><h2>🏆 Top 20 ASINs for PL Launch</h2>';
+        asinHtml += '<div class="table-container"><table><thead><tr>';
+        asinHtml += '<th>#</th><th>ASIN</th><th>Category</th><th>EU GMS</th><th>EU Units</th><th>PL Mkt YoY</th><th>Score</th>';
+        asinHtml += '</tr></thead><tbody>';
+        results.topAsins.forEach(function(a, idx) {
+            asinHtml += '<tr><td>' + (idx + 1) + '</td><td><strong>' + a.asin + '</strong></td>';
+            asinHtml += '<td>' + a.category + '</td><td>' + formatCurrency(a.euGms) + '</td>';
+            asinHtml += '<td>' + formatNumber(a.euUnits) + '</td>';
+            asinHtml += '<td>' + (a.plMarketYoy !== null ? formatPercent(a.plMarketYoy) : 'N/A') + '</td>';
+            asinHtml += '<td style="color:#ff9900;font-weight:bold">' + formatNumber(a.score) + '</td></tr>';
+        });
+        asinHtml += '</tbody></table></div></div>';
+        container.innerHTML += asinHtml;
+    } else {
+        container.innerHTML += '<div class="card"><h2>🏆 Top ASINs</h2><div class="no-data-message"><div class="icon">📦</div><h3>No ASIN Data</h3><p>Upload the ASIN Performance & Fee file to see ASIN recommendations.</p></div></div>';
+    }
+
+    if (results.feeEstimate && results.feeEstimate.items.length > 0) {
+        var feeHtml = '<div class="card"><h2>💰 Fee Comparison Detail — ' + merchantId + '</h2>';
+        feeHtml += '<p style="margin-bottom:15px">' + results.feeEstimate.items.length + ' ASINs with fee data. ';
+        feeHtml += '🇵🇱 PL Local wins: <strong style="color:#dc143c">' + results.feeEstimate.plWins + '</strong> | ';
+        feeHtml += '🌐 EFN wins: <strong style="color:#ff9800">' + results.feeEstimate.efnWins + '</strong></p>';
+        feeHtml += '<div class="table-container"><table><thead><tr>';
+        feeHtml += '<th>ASIN</th><th>DE Fulfill</th><th>PL Fulfill</th><th>Fulfill Diff</th>';
+        feeHtml += '<th>DE Referral</th><th>PL Referral</th><th>Ref Diff</th>';
+        feeHtml += '<th>Total Diff</th><th>EFN Fulfill</th><th>EFN Total</th><th>EFN vs PL</th><th>Winner</th>';
+        feeHtml += '</tr></thead><tbody>';
+        var feeItems = results.feeEstimate.items.slice(0, 100);
+        feeItems.forEach(function(f) {
+            var fDiffClass = f.fulfillmentDiff < 0 ? 'success' : (f.fulfillmentDiff > 0 ? 'error' : 'info');
+            var rDiffClass = f.referralDiff < 0 ? 'success' : (f.referralDiff > 0 ? 'error' : 'info');
+            var tDiffClass = f.totalDiff < 0 ? 'success' : (f.totalDiff > 0 ? 'error' : 'info');
+            var winnerText, winnerClass;
+            if (f.plFulfillment < f.efnFulfillment) { winnerText = '🇵🇱 PL'; winnerClass = 'success'; }
+            else if (f.efnFulfillment < f.plFulfillment) { winnerText = '🌐 EFN'; winnerClass = 'warning'; }
+            else { winnerText = '➖ Tie'; winnerClass = 'info'; }
+            feeHtml += '<tr>';
+            feeHtml += '<td style="font-family:monospace;font-weight:600">' + f.asin + '</td>';
+            feeHtml += '<td>' + formatCurrency(f.deFulfillment) + '</td>';
+            feeHtml += '<td>' + formatCurrency(f.plFulfillment) + '</td>';
+            feeHtml += '<td><span class="status ' + fDiffClass + '">' + formatCurrency(f.fulfillmentDiff) + '</span></td>';
+            feeHtml += '<td>' + formatCurrency(f.deReferral) + '</td>';
+            feeHtml += '<td>' + formatCurrency(f.plReferral) + '</td>';
+            feeHtml += '<td><span class="status ' + rDiffClass + '">' + formatCurrency(f.referralDiff) + '</span></td>';
+            feeHtml += '<td><span class="status ' + tDiffClass + '">' + formatCurrency(f.totalDiff) + '</span></td>';
+            feeHtml += '<td>' + formatCurrency(f.efnFulfillment) + '</td>';
+            feeHtml += '<td>' + formatCurrency(f.efnTotal) + '</td>';
+            feeHtml += '<td>' + formatCurrency(f.efnVsPlDiff) + '</td>';
+            feeHtml += '<td><span class="status ' + winnerClass + '">' + winnerText + '</span></td>';
+            feeHtml += '</tr>';
+        });
+        if (results.feeEstimate.items.length > 100) {
+            feeHtml += '<tr><td colspan="12" style="text-align:center;color:#aaa">... and ' + (results.feeEstimate.items.length - 100) + ' more ASINs</td></tr>';
+        }
+        feeHtml += '</tbody></table></div></div>';
+        container.innerHTML += feeHtml;
+    }
+
+    var notesHtml = '<div class="card"><h2>⚠️ Calculation Notes</h2><div style="background:rgba(0,0,0,0.3);border-radius:10px;padding:20px"><ul style="list-style:none;padding:0">';
+    results.notes.forEach(function(n) {
+        notesHtml += '<li style="padding:6px 0;padding-left:20px;position:relative"><span style="position:absolute;left:5px;color:#ff9900">•</span>' + n + '</li>';
+    });
+    notesHtml += '</ul></div></div>';
+    container.innerHTML += notesHtml;
+
+    return container;
+}
+
+function summaryCardHTML(extraClass, value, label, formatter) {
+    var displayVal = formatter(value);
+    return '<div class="summary-card ' + extraClass + '"><div class="value">' + displayVal + '</div><div class="label">' + label + '</div></div>';
+}
+
+// ============================================
+// EXPORT FUNCTIONS
+// ============================================
+function exportAllJSON() {
+    if (!allSellerResults || Object.keys(allSellerResults).length === 0) return;
+    var json = JSON.stringify(allSellerResults, null, 2);
+    downloadBlob(json, 'application/json', 'pl_opportunity_all_sellers.json');
+}
+
+function exportAllCSV() {
+    if (!allSellerResults || Object.keys(allSellerResults).length === 0) return;
+    var headers = ['Merchant ID', 'Total PL GMS Year 1', 'Uplift %', 'EU9 GMS 2025', 'EU GMS Next (No PL)', 'EU GMS Next (With PL)', 'Incremental PL GMS', 'Ramp Rate', 'Est PL Fees (Local)', 'Est PL Fees (EFN)', 'Fee Comparison'];
+    var rows = [];
+    Object.keys(allSellerResults).forEach(function(mid) {
+        var r = allSellerResults[mid];
+        if (!r.summary) { rows.push([mid, 'ERROR', '', '', '', '', '', '', '', '', '']); return; }
+        var s2 = r.summary;
+        var fe2 = r.feeEstimate;
+        rows.push([
+            mid,
+            s2.totalPlGmsYear1.toFixed(2),
+            s2.upliftPct !== null ? (s2.upliftPct * 100).toFixed(2) + '%' : 'N/A',
+            s2.eu9Gms2025.toFixed(2),
+            s2.eu9GmsNextNoPl.toFixed(2),
+            s2.eu9GmsNextWithPl.toFixed(2),
+            s2.incrementalPlGms.toFixed(2),
+            s2.rampRate,
+            fe2 ? fe2.totalPlFees.toFixed(2) : 'N/A',
+            fe2 ? fe2.totalEfnFees.toFixed(2) : 'N/A',
+            fe2 ? (fe2.plCheaper ? 'PL Local cheaper by ' + Math.abs(fe2.plVsEfnDiff).toFixed(2) : 'EFN cheaper by ' + Math.abs(fe2.plVsEfnDiff).toFixed(2)) : 'N/A'
+        ]);
+    });
+    var csv = [headers.join(',')].concat(rows.map(function(r2) { return r2.map(function(v) { return '"' + v + '"'; }).join(','); })).join('\n');
+    downloadBlob(csv, 'text/csv', 'pl_opportunity_summary.csv');
+}
+
+function downloadBlob(content, mimeType, filename) {
+    var blob = new Blob([content], { type: mimeType });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
