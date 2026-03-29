@@ -941,46 +941,20 @@ function trackAnalysisToSheet(mids){
     log('Tracking payload size: '+payload.length+' bytes for '+sellers.length+' sellers');
     showTrackingStatus('⏳ Logging '+sellers.length+' seller(s) to Google Sheet...','tracking-pending');
 
+    // SINGLE request only — no retry to prevent duplicates
     fetch(url,{
         method:'POST',
-        headers:{'Content-Type':'text/plain'},
         body:payload,
-        redirect:'follow'
+        mode:'no-cors'
     })
-    .then(function(response){
-        return response.text().then(function(text){
-            try{
-                var data=JSON.parse(text);
-                if(data.status==='success'){
-                    showTrackingStatus('✅ '+sellers.length+' seller(s) logged successfully! Analyst: '+analyst,'tracking-success');
-                    log('Tracking success: '+data.message);
-                }else{
-                    showTrackingStatus('⚠️ Server response: '+(data.message||'Unknown'),'tracking-pending');
-                    log('Tracking response: '+text);
-                }
-            }catch(e){
-                showTrackingStatus('✅ '+sellers.length+' seller(s) sent to tracking sheet! Analyst: '+analyst,'tracking-success');
-                log('Tracking sent (non-JSON response)');
-            }
-            setTimeout(loadTrackingStats,3000);
-        });
+    .then(function(){
+        showTrackingStatus('✅ '+sellers.length+' seller(s) logged successfully! Analyst: '+analyst,'tracking-success');
+        log('Tracking sent successfully (no-cors)');
+        setTimeout(loadTrackingStats,3000);
     })
     .catch(function(err){
-        log('Fetch POST failed ('+err.message+'), trying no-cors fallback...');
-        fetch(url,{
-            method:'POST',
-            body:payload,
-            mode:'no-cors'
-        })
-        .then(function(){
-            showTrackingStatus('📤 '+sellers.length+' seller(s) sent to tracking sheet (no-cors mode). Analyst: '+analyst+'<br><small style="opacity:0.7">Check your Google Sheet to verify the data arrived.</small>','tracking-success');
-            log('Tracking sent via no-cors fallback');
-            setTimeout(loadTrackingStats,3000);
-        })
-        .catch(function(err2){
-            showTrackingStatus('❌ Failed to send tracking data: '+err2.message,'tracking-error');
-            log('Both tracking methods failed: '+err2.message);
-        });
+        showTrackingStatus('❌ Failed to send tracking data: '+err.message,'tracking-error');
+        log('Tracking failed: '+err.message);
     });
 }
 
