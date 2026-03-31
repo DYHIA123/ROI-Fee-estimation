@@ -92,8 +92,6 @@
         .radio-group label:hover{border-color:#ff9900;background:rgba(255,153,0,0.1)}
         .radio-group input[type="radio"]:checked+span{color:#ff9900;font-weight:700}
         .radio-group label:has(input:checked){border-color:#ff9900;background:rgba(255,153,0,0.15)}
-
-        /* NARRATIVE SUMMARY */
         .narrative-summary{background:rgba(0,0,0,0.3);border-radius:12px;padding:25px;border-left:4px solid #ff9900;margin-bottom:20px}
         .narrative-summary .ns-section{margin-bottom:20px}
         .narrative-summary .ns-section:last-child{margin-bottom:0}
@@ -111,12 +109,9 @@
         .narrative-summary .ns-kpi .kv{font-size:1.5em;font-weight:700;margin-bottom:4px}
         .narrative-summary .ns-kpi .kl{font-size:0.8em;opacity:0.8}
         .narrative-summary .ns-kpi.highlight .kv,.narrative-summary .ns-kpi.highlight .kl{color:#232f3e}
-
         .tracking-success{background:rgba(76,175,80,0.2);border:1px solid rgba(76,175,80,0.4);color:#81c784;padding:10px 15px;border-radius:8px;font-size:0.9em}
         .tracking-error{background:rgba(244,67,54,0.2);border:1px solid rgba(244,67,54,0.4);color:#e57373;padding:10px 15px;border-radius:8px;font-size:0.9em}
         .tracking-pending{background:rgba(255,153,0,0.2);border:1px solid rgba(255,153,0,0.4);color:#ffcc80;padding:10px 15px;border-radius:8px;font-size:0.9em}
-
-        /* FEE PANEL STYLES */
         .fee-section-divider{display:flex;align-items:center;margin:30px 0;gap:15px}
         .fee-section-divider::before,.fee-section-divider::after{content:'';flex:1;height:2px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.2),transparent)}
         .fee-section-divider h3{font-size:1.1em;white-space:nowrap;padding:10px 20px;border-radius:25px}
@@ -337,30 +332,17 @@ const PL_DEALS_LOOKUP={};
 (function(){var byPg={};PL_DEALS_RAW.forEach(function(r){var pg=normCat(r[1]);if(!pg)return;if(!byPg[pg])byPg[pg]={t:0,p:0};byPg[pg].t+=(r[2]||0);byPg[pg].p+=(r[3]||0)});Object.keys(byPg).forEach(function(k){var d=byPg[k];PL_DEALS_LOOKUP[k]={totalGms:d.t,totalPromoGms:d.p,deal_contribution_pct:d.t>0?d.p/d.t:0}});var bySf={};PL_DEALS_RAW.forEach(function(r){var sf=normCat(r[0]);if(!sf)return;if(!bySf[sf])bySf[sf]={t:0,p:0};bySf[sf].t+=(r[2]||0);bySf[sf].p+=(r[3]||0)});Object.keys(bySf).forEach(function(k){var d=bySf[k];if(!PL_DEALS_LOOKUP[k])PL_DEALS_LOOKUP[k]={totalGms:d.t,totalPromoGms:d.p,deal_contribution_pct:d.t>0?d.p/d.t:0}})})();
 const DEALS_SIGNIFICANT_THRESHOLD=0.12;
 
-// ============================================
-// PL RELATIVE SHARE MAP (NEW RAMP LOGIC)
-// ============================================
 const PL_RELATIVE_SHARE = {
-    DE: 0.01,
-    FR: 0.02,
-    IT: 0.02,
-    ES: 0.03,
-    NL: 0.29,
-    BE: 0.31,
-    UK: 0.01,
-    IE: 0.59,
-    SE: 0.58,
-    PL: 1.00
+    DE: 0.01, FR: 0.02, IT: 0.02, ES: 0.03, NL: 0.29, BE: 0.31,
+    UK: 0.01, IE: 0.59, SE: 0.58, PL: 1.00
 };
 const PL_RELATIVE_SHARE_DEFAULT = 0.05;
 
-// Constants
 const MARKETPLACE_ID_TO_CODE={'1':'US','3':'UK','4':'DE','5':'FR','35691':'IT','44551':'ES','328451':'NL','704403121':'SE','679831071':'BE','712115121':'PL','753556201':'IE','44571':'IN','3240':'CN','526970':'BR','771770':'MX','111172':'AU','338801':'AE','338811':'SA','338851':'TR','104444012':'SG','623225021':'EG'};
 const EU_MARKETPLACES=['UK','DE','FR','IT','ES','NL','SE','BE','PL','IE'];
 const OPF_MIN=0.1,OPF_MAX=1.0,ANCHOR_SHARE_THRESHOLD=0.20,NEW_SELLER_MAX_YOY=0.30;
 const TRACKING_URL='https://script.google.com/macros/s/AKfycbyflYcmO4uJnkuWvHGY7Y-rr14vbD2-WLCBtkEgOG9r5ZXp98tPKVMCD_JB9fpiIFKe/exec';
 
-// Globals
 let sellerCategoryData=null,categoryGrowthData=null,asinFeeRawData=null,asinFeeHeaders=null;
 let allSellerResults={},debugLog=[],currentDisplayedSeller=null,detectedMerchantIds=[];
 let feeStates={};
@@ -393,17 +375,115 @@ function rowsToObjects(rows){if(rows.length<2)return[];var h=rows[0].map(functio
 // FILE HANDLERS
 // ============================================
 function handleSellerCatData(rows,fn){sellerCategoryData=rowsToObjects(rows);log('Seller cat: '+sellerCategoryData.length+' rows');var ids=new Set();sellerCategoryData.forEach(function(r){var s=String(r.seller_id||r.merchant_customer_id||r.merchant_id||'').trim().split('.')[0];if(s&&s.length>3)ids.add(s)});detectedMerchantIds=Array.from(ids);log('Detected '+detectedMerchantIds.length+' IDs');document.getElementById('sellerCatLabel').classList.add('uploaded');document.getElementById('sellerCatStatus').innerHTML='✅ '+fn+' ('+sellerCategoryData.length+' rows)';document.getElementById('sellerCatStatus').classList.add('success');if(detectedMerchantIds.length>0&&document.querySelector('input[name="idMode"]:checked').value==='auto'){var box=document.getElementById('detectedIdsBox');box.classList.add('visible');document.getElementById('detectedIdsList').innerHTML=detectedMerchantIds.map(function(id){return'<span class="id-chip">'+id+'</span>'}).join('');box.querySelector('p').textContent='Found '+detectedMerchantIds.length+' unique seller(s).'}}
-function handleCatGrowthData(rows,fn){categoryGrowthData=[];for(var i=1;i<rows.length;i++){var r=rows[i];if(!r||r.length<3)continue;var mkt=String(r[0]||'').trim();if(!mkt)continue;categoryGrowthData.push({marketplace_name:mkt,sf_primary_category:String(r[1]||'').trim(),net_ordered_gms_ttm:parseMoneyValue(r[2]),net_ordered_gms_yoy:parsePercentOrDecimal(r[3]),net_ordered_units_ttm:parseNumberValue(r[4]),net_ordered_units_yoy:parsePercentOrDecimal(r[5])})}log('Cat growth: '+categoryGrowthData.length+' rows');document.getElementById('catGrowthLabel').classList.add('uploaded');document.getElementById('catGrowthStatus').innerHTML='✅ '+fn+' ('+categoryGrowthData.length+' rows)';document.getElementById('catGrowthStatus').classList.add('success')}
+
+// ← CHANGED: handleCatGrowthData — skip "Total" row, handle empty marketplace
+function handleCatGrowthData(rows,fn){
+    categoryGrowthData=[];
+    for(var i=1;i<rows.length;i++){
+        var r=rows[i];
+        if(!r||r.length<3)continue;
+        var mkt=String(r[0]||'').trim();
+        // Skip summary/total rows and empty marketplace rows
+        if(!mkt || mkt.toLowerCase()==='total')continue;
+        categoryGrowthData.push({
+            marketplace_name:mkt,
+            sf_primary_category:String(r[1]||'').trim(),
+            net_ordered_gms_ttm:parseMoneyValue(r[2]),
+            net_ordered_gms_yoy:parsePercentOrDecimal(r[3]),
+            net_ordered_units_ttm:parseNumberValue(r[4]),
+            net_ordered_units_yoy:parsePercentOrDecimal(r[5])
+        });
+    }
+    log('Cat growth: '+categoryGrowthData.length+' rows');
+    // Log sample to verify parsing
+    if(categoryGrowthData.length>0){
+        var s=categoryGrowthData[0];
+        log('  Sample row: mkt="'+s.marketplace_name+'" → code="'+getMarketplaceCode(s.marketplace_name)+'" cat="'+s.sf_primary_category+'" gms='+s.net_ordered_gms_ttm+' yoy='+s.net_ordered_gms_yoy);
+    }
+    document.getElementById('catGrowthLabel').classList.add('uploaded');
+    document.getElementById('catGrowthStatus').innerHTML='✅ '+fn+' ('+categoryGrowthData.length+' rows)';
+    document.getElementById('catGrowthStatus').classList.add('success');
+}
+
 function handleAsinFeeData(rows,fn){asinFeeRawData=rows;if(rows.length>0)asinFeeHeaders=rows[0].map(function(h){return String(h||'').trim().toLowerCase().replace(/\s+/g,'_').replace(/[()%$]/g,'').replace(/[^a-z0-9_]/g,'')});log('ASIN+Fee: '+rows.length+' rows, '+(rows[0]||[]).length+' cols');document.getElementById('asinFeeLabel').classList.add('uploaded');document.getElementById('asinFeeStatus').innerHTML='✅ '+fn+' ('+(rows.length-1)+' rows)';document.getElementById('asinFeeStatus').classList.add('success')}
 
 // ============================================
 // VALUE HELPERS
 // ============================================
 function parseMoneyValue(v){if(v===null||v===undefined||v===''||v==='-')return 0;var n=parseFloat(String(v).replace(/[$,\s"'€£zł]/gi,''));return isNaN(n)?0:n}
-function parsePercentOrDecimal(v){if(v===null||v===undefined||String(v).trim()===''||v==='-'||v==='#DIV/0!')return null;var s=String(v).trim().replace(/['"]/g,'');if(s.indexOf('%')!==-1){var n=parseFloat(s.replace('%',''));return isNaN(n)?null:n/100}var n2=parseFloat(s);if(isNaN(n2))return null;if(Math.abs(n2)>5)return n2/100;return n2}
-function parsePercentValue(v){if(!v||v===''||v==='-'||v==='#DIV/0!')return null;var n=parseFloat(String(v).replace(/[%\s"']/g,''));return isNaN(n)?null:n/100}
-function parseNumberValue(v){if(v===null||v===undefined||v===''||v==='-')return 0;var n=parseFloat(String(v).replace(/[,\s"']/g,''));return isNaN(n)?0:n}
-function getMarketplaceCode(raw){if(!raw)return null;var c=String(raw).trim().split('.')[0];if(MARKETPLACE_ID_TO_CODE[c])return MARKETPLACE_ID_TO_CODE[c];var u=c.toUpperCase();if(EU_MARKETPLACES.includes(u))return u;var nm={'UNITED KINGDOM':'UK','GERMANY':'DE','FRANCE':'FR','ITALY':'IT','SPAIN':'ES','NETHERLANDS':'NL','SWEDEN':'SE','BELGIUM':'BE','POLAND':'PL','IRELAND':'IE'};if(nm[u])return nm[u];return c}
+
+// ← CHANGED: parsePercentOrDecimal — handle (5.66%) accounting-negative and "1,563.92%" formats
+function parsePercentOrDecimal(v){
+    if(v===null||v===undefined||String(v).trim()===''||v==='-'||v==='#DIV/0!')return null;
+    var s=String(v).trim().replace(/['"]/g,'');
+    // Detect accounting-negative format: (5.66%) or ( 5.66%)
+    var isNeg=false;
+    if(s.match(/^\(.*\)$/)){
+        isNeg=true;
+        s=s.replace(/[()]/g,'').trim();
+    }
+    // Remove commas from large numbers like "1,563.92%"
+    s=s.replace(/,/g,'');
+    if(s.indexOf('%')!==-1){
+        var n=parseFloat(s.replace('%',''));
+        if(isNaN(n))return null;
+        if(isNeg)n=-n;
+        return n/100;
+    }
+    var n2=parseFloat(s);
+    if(isNaN(n2))return null;
+    if(isNeg)n2=-n2;
+    if(Math.abs(n2)>5)return n2/100;
+    return n2;
+}
+
+function parsePercentValue(v){if(!v||v===''||v==='-'||v==='#DIV/0!')return null;var s=String(v).trim().replace(/['"]/g,'');var isNeg=false;if(s.match(/^\(.*\)$/)){isNeg=true;s=s.replace(/[()]/g,'').trim()}s=s.replace(/,/g,'');var n=parseFloat(s.replace(/[%\s]/g,''));if(isNaN(n))return null;if(isNeg)n=-n;return n/100}
+function parseNumberValue(v){if(v===null||v===undefined||v===''||v==='-')return 0;var s=String(v).trim().replace(/['"]/g,'');var isNeg=false;if(s.match(/^\(.*\)$/)){isNeg=true;s=s.replace(/[()]/g,'').trim()}var n=parseFloat(s.replace(/[,\s]/g,''));if(isNaN(n))return 0;return isNeg?-n:n}
+
+// ← CHANGED: getMarketplaceCode — handle amazon.de, amazon.co.uk, amazon.pl format
+function getMarketplaceCode(raw){
+    if(!raw)return null;
+    var c=String(raw).trim();
+
+    // NEW: Handle "amazon.XX" format (e.g., amazon.de, amazon.fr, amazon.co.uk, amazon.com.be, amazon.pl)
+    var amzMatch=c.match(/^amazon\.(.+)$/i);
+    if(amzMatch){
+        var domain=amzMatch[1].toLowerCase();
+        // Map domain suffixes to marketplace codes
+        var domainMap={
+            'de':'DE','fr':'FR','it':'IT','es':'ES','nl':'NL','pl':'PL','se':'SE',
+            'co.uk':'UK','co.jp':'JP','com':'US','com.au':'AU','com.br':'BR',
+            'com.mx':'MX','com.be':'BE','com.tr':'TR','sg':'SG','ae':'AE',
+            'sa':'SA','eg':'EG','in':'IN','cn':'CN','ie':'IE'
+        };
+        // Try exact match first (handles co.uk, com.be, etc.)
+        if(domainMap[domain])return domainMap[domain];
+        // Fallback: try last part only (e.g., "co.uk" → already handled, but "uk" alone)
+        var parts=domain.split('.');
+        var last=parts[parts.length-1].toUpperCase();
+        if(EU_MARKETPLACES.includes(last))return last;
+        // Return uppercase of last segment
+        return last;
+    }
+
+    // Original logic: numeric marketplace IDs
+    var id=c.split('.')[0];
+    if(MARKETPLACE_ID_TO_CODE[id])return MARKETPLACE_ID_TO_CODE[id];
+
+    // Direct code match (e.g., "DE", "UK")
+    var u=id.toUpperCase();
+    if(EU_MARKETPLACES.includes(u))return u;
+
+    // Full name match
+    var nm={
+        'UNITED KINGDOM':'UK','GERMANY':'DE','FRANCE':'FR','ITALY':'IT',
+        'SPAIN':'ES','NETHERLANDS':'NL','SWEDEN':'SE','BELGIUM':'BE',
+        'POLAND':'PL','IRELAND':'IE'
+    };
+    if(nm[u])return nm[u];
+    return id;
+}
+
 function formatCurrency(v){if(v===null||v===undefined||isNaN(v))return'N/A';var s=v<0?'-':'';return s+'$'+Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}
 function formatPercent(v){if(v===null||v===undefined||isNaN(v))return'N/A';return(v*100).toFixed(2)+'%'}
 function formatNumber(v){if(v===null||v===undefined||isNaN(v))return'N/A';return v.toLocaleString('en-US',{maximumFractionDigits:0})}
@@ -416,7 +496,7 @@ function parseSellerYoY(raw,mktYoY){if(raw===null||raw===undefined||String(raw).
 function computeOPF(sy,my){if(my===null||my===undefined||isNaN(my)||my===0)return 1.0;return Math.max(OPF_MIN,Math.min(OPF_MAX,sy/my))}
 
 // ============================================
-// SIZE FACTOR (NEW RAMP LOGIC)
+// SIZE FACTOR
 // ============================================
 function computeSizeFactor(eu9Total){
     if(eu9Total<1000000) return 1.0;
@@ -424,7 +504,6 @@ function computeSizeFactor(eu9Total){
     else if(eu9Total<20000000) return 0.5;
     else return 0.3;
 }
-
 function getSizeTierLabel(eu9Total){
     if(eu9Total<1000000) return 'Small (<$1M)';
     else if(eu9Total<5000000) return 'Mid ($1M–$5M)';
@@ -438,27 +517,20 @@ function getSizeTierLabel(eu9Total){
 function findColIndex(headers,candidates){for(var c=0;c<candidates.length;c++)for(var i=0;i<headers.length;i++)if(headers[i]===candidates[c]||headers[i].indexOf(candidates[c])!==-1)return i;return-1}
 function extractAsinDataForSeller(mid){
     if(!asinFeeRawData||asinFeeRawData.length<2)return[];
-    var COL_ASIN=colToIndex('A');
-    var COL_MID=colToIndex('B');
+    var COL_ASIN=colToIndex('A');var COL_MID=colToIndex('B');
     var COL_CAT=findColIndex(asinFeeHeaders||[],['sf_primary_category','category_description','category']);
-    var COL_ASP=colToIndex('L');
-    var COL_UNITS=colToIndex('N');
-    var res=[];
+    var COL_ASP=colToIndex('L');var COL_UNITS=colToIndex('N');var res=[];
     for(var i=1;i<asinFeeRawData.length;i++){
         var row=asinFeeRawData[i];if(!row)continue;
         var sid=String(row[COL_MID]||'').trim().split('.')[0];
         if(sid!==String(mid).split('.')[0])continue;
         var asin=String(row[COL_ASIN]||'').trim();if(!asin)continue;
-        var asp=parseFloat(row[COL_ASP])||0;
-        var units=parseFloat(row[COL_UNITS])||0;
-        var gms=asp*units;
+        var asp=parseFloat(row[COL_ASP])||0;var units=parseFloat(row[COL_UNITS])||0;var gms=asp*units;
         var cat=COL_CAT>=0?normCat(row[COL_CAT]):'unknown';
         res.push({asin:asin,category:cat,gms:gms,units:units});
     }
-    log('ASIN extraction for '+mid+': '+res.length+' ASINs. Sample GMS: '+(res.length>0?'$'+res[0].gms.toFixed(2)+' (ASP×Units)':'none'));
-    return res;
+    log('ASIN extraction for '+mid+': '+res.length+' ASINs.');return res;
 }
-
 function extractFeeDataForSeller(mid){
     if(!asinFeeRawData||asinFeeRawData.length<2)return null;
     var cc=(asinFeeRawData[0]||[]).length;
@@ -552,46 +624,27 @@ function buildFeePanel(sid,fe){
 }
 
 // ============================================
-// NARRATIVE SUMMARY (UPDATED WITH NEW RAMP INFO)
+// NARRATIVE SUMMARY
 // ============================================
 function buildNarrativeSummary(mid,results){
     var s=results.summary;
     var topCats=results.byCategory.filter(function(c){return c.plGmsYear1>0}).sort(function(a,b){return b.plGmsYear1-a.plGmsYear1});
     var feeSm=results.feeEstimate?computeFeeSummary(results.feeEstimate.items):null;
     var sigDeals=topCats.filter(function(c){return c.dealsSignificant});
-
-    var avgSavingsPct=0;
-    var totalDeFees=0;
+    var avgSavingsPct=0;var totalDeFees=0;
     if(feeSm&&results.feeEstimate&&results.feeEstimate.items){
-        var items=results.feeEstimate.items;
-        var savPctSum=0,savPctCount=0;
-        items.forEach(function(it){
-            totalDeFees+=it.deFulfillment+it.deReferral;
-            if(it.totalPercent&&it.totalPercent<0){
-                savPctSum+=Math.abs(it.totalPercent);
-                savPctCount++;
-            }
-        });
+        var items=results.feeEstimate.items;var savPctSum=0,savPctCount=0;
+        items.forEach(function(it){totalDeFees+=it.deFulfillment+it.deReferral;if(it.totalPercent&&it.totalPercent<0){savPctSum+=Math.abs(it.totalPercent);savPctCount++}});
         if(savPctCount>0)avgSavingsPct=savPctSum/savPctCount;
     }
-
     var topCatNames=topCats.slice(0,3).map(function(c){return c.category}).join(', ');
-
     var h='<div class="narrative-summary">';
-
-    // HEADER
-  h+='<h3 style="color:#ff9900;margin-bottom:20px;font-size:1.2em">📋 Year 1 Poland Seller Roadmap — Merchant '+mid+(s.merchantName?' — '+escapeHtml(s.merchantName):'')+'</h3>';  
-
-    // A. OPPORTUNITY SUMMARY
+    h+='<h3 style="color:#ff9900;margin-bottom:20px;font-size:1.2em">📋 Year 1 Poland Seller Roadmap — Merchant '+mid+(s.merchantName?' — '+escapeHtml(s.merchantName):'')+'</h3>';
     h+='<div class="ns-section"><div class="ns-title">A. Opportunity Summary</div>';
     h+='<p>Based on your current EU performance, your projected <span class="ns-stat">Year 1 PL GMS is '+formatCurrency(s.totalPlGmsYear1)+'</span>.';
     if(s.upliftPct!==null)h+=' This represents an <span class="ns-stat">uplift of '+formatPercent(s.upliftPct)+'</span> on top of your existing EU business.';
     h+='</p>';
-
-
-    if(topCats.length>0){
-        h+='<p>Your top projected categories in Poland are: <strong>'+topCatNames+'</strong>.</p>';
-    }
+    if(topCats.length>0)h+='<p>Your top projected categories in Poland are: <strong>'+topCatNames+'</strong>.</p>';
     h+='<div class="ns-kpi-row">';
     h+='<div class="ns-kpi highlight"><div class="kv">'+formatCurrency(s.totalPlGmsYear1)+'</div><div class="kl">PL Year 1 GMS</div></div>';
     h+='<div class="ns-kpi highlight"><div class="kv">'+(s.upliftPct!==null?formatPercent(s.upliftPct):'N/A')+'</div><div class="kl">🚀 Uplift</div></div>';
@@ -600,82 +653,33 @@ function buildNarrativeSummary(mid,results){
     h+='<div class="ns-kpi"><div class="kv">'+formatCurrency(s.eu9GmsNextWithPl)+'</div><div class="kl">EU + PL Projected</div></div>';
     h+='<div class="ns-kpi"><div class="kv">'+formatCurrency(s.incrementalPlGms)+'</div><div class="kl">Incremental PL</div></div>';
     h+='</div></div>';
-
-    // B. COST & FEES OVERVIEW
     h+='<div class="ns-section"><div class="ns-title">B. Cost & Fees Overview</div>';
     if(feeSm){
         var feeBoxClass=feeSm.plCheaper?'green':'';
         h+='<div class="ns-highlight-box '+feeBoxClass+'">';
-        h+='<p><strong>PL fees:</strong> Est. fees ≈ <span class="ns-stat">'+formatCurrency(feeSm.plFulfillTotal+feeSm.referralSavTotal>0?feeSm.plFulfillTotal:feeSm.plFulfillTotal)+'</span></p>';
-        if(totalDeFees>0){
-            h+='<p><strong>DE Fees:</strong> Est. fees ≈ <span class="ns-stat">'+formatCurrency(totalDeFees)+'</span></p>';
-        }
+        h+='<p><strong>PL fees:</strong> Est. fees ≈ <span class="ns-stat">'+formatCurrency(feeSm.plFulfillTotal)+'</span></p>';
+        if(totalDeFees>0)h+='<p><strong>DE Fees:</strong> Est. fees ≈ <span class="ns-stat">'+formatCurrency(totalDeFees)+'</span></p>';
         h+='<p><strong>EFN (ship from Germany):</strong> Est. fees ≈ <span class="ns-stat">'+formatCurrency(feeSm.efnFulfillTotal)+'</span></p>';
-        if(totalDeFees>0){
-            var plTotalFees=0;
-            results.feeEstimate.items.forEach(function(it){plTotalFees+=it.plTotal||0});
-            if(plTotalFees<totalDeFees){
-                h+='<p>Poland fees are much lower than Germany fees. From the analysed ASINs you save around <span class="ns-stat">'+avgSavingsPct.toFixed(1)+'%</span> if you sell one unit of each ASIN.</p>';
-            }else{
-                h+='<p>Poland and Germany fees are comparable for your product mix.</p>';
-            }
-        }
-        if(feeSm.plCheaper){
-            h+='<p>🇵🇱 <strong>FBA Local fees (storing in PL) is more cost effective</strong> than shipping from DE to PL, saving ~<span class="ns-stat">'+formatCurrency(Math.abs(feeSm.compDiff))+'</span> vs EFN across <span class="ns-stat">'+feeSm.total+'</span> ASINs analysed.</p>';
-        }else{
-            h+='<p>🌐 <strong>EFN appears more cost-effective</strong> by ~'+formatCurrency(Math.abs(feeSm.compDiff))+'. FBA Local still wins on '+feeSm.plWins+' ASINs.</p>';
-        }
+        if(totalDeFees>0){var plTotalFees=0;results.feeEstimate.items.forEach(function(it){plTotalFees+=it.plTotal||0});if(plTotalFees<totalDeFees)h+='<p>Poland fees are much lower than Germany fees. From the analysed ASINs you save around <span class="ns-stat">'+avgSavingsPct.toFixed(1)+'%</span> if you sell one unit of each ASIN.</p>';else h+='<p>Poland and Germany fees are comparable for your product mix.</p>'}
+        if(feeSm.plCheaper)h+='<p>🇵🇱 <strong>FBA Local fees (storing in PL) is more cost effective</strong> than shipping from DE to PL, saving ~<span class="ns-stat">'+formatCurrency(Math.abs(feeSm.compDiff))+'</span> vs EFN across <span class="ns-stat">'+feeSm.total+'</span> ASINs analysed.</p>';
+        else h+='<p>🌐 <strong>EFN appears more cost-effective</strong> by ~'+formatCurrency(Math.abs(feeSm.compDiff))+'. FBA Local still wins on '+feeSm.plWins+' ASINs.</p>';
         h+='</div>';
-    }else{
-        h+='<p><em>No fee data available. Upload the ASIN+Fee file to see cost analysis.</em></p>';
-    }
+    }else h+='<p><em>No fee data available. Upload the ASIN+Fee file to see cost analysis.</em></p>';
     h+='</div>';
-
-    // C. DEALS & PROMOTION STRATEGY
     h+='<div class="ns-section"><div class="ns-title">C. Deals & Promotion Strategy</div>';
-    if(sigDeals.length>0){
-        h+='<div class="ns-highlight-box green">';
-        h+='<p>In your top projected categories, <strong>deals are a significant sales driver</strong>:</p><ul>';
-        sigDeals.slice(0,5).forEach(function(c){
-            h+='<li><strong>'+c.category+'</strong>: Deals ≈ <span class="ns-stat">'+(c.dealContributionPct*100).toFixed(0)+'%</span> of category GMS. Projected: '+formatCurrency(c.plGmsYear1)+'</li>';
-        });
-        h+='</ul>';
-        h+='<p>Running deals and coupons regularly in these categories is <strong>essential</strong>.</p>';
-        h+='</div>';
-    }else{
-        var anyCats=topCats.filter(function(c){return c.dealContributionPct!==null});
-        if(anyCats.length>0){
-            h+='<p>Deals contribute a moderate share (~10–12%) in your categories. Promotions during key events will help drive initial traction.</p>';
-        }else{
-            h+='<p>Promotions are generally important for new market entry in Poland.</p>';
-        }
-    }
+    if(sigDeals.length>0){h+='<div class="ns-highlight-box green">';h+='<p>In your top projected categories, <strong>deals are a significant sales driver</strong>:</p><ul>';sigDeals.slice(0,5).forEach(function(c){h+='<li><strong>'+c.category+'</strong>: Deals ≈ <span class="ns-stat">'+(c.dealContributionPct*100).toFixed(0)+'%</span> of category GMS. Projected: '+formatCurrency(c.plGmsYear1)+'</li>'});h+='</ul><p>Running deals and coupons regularly in these categories is <strong>essential</strong>.</p></div>'}
+    else{var anyCats=topCats.filter(function(c){return c.dealContributionPct!==null});if(anyCats.length>0)h+='<p>Deals contribute a moderate share (~10–12%) in your categories. Promotions during key events will help drive initial traction.</p>';else h+='<p>Promotions are generally important for new market entry in Poland.</p>'}
     h+='</div>';
-
-    // D. CONCRETE YEAR 1 NEXT STEPS
     h+='<div class="ns-section"><div class="ns-title">D. Concrete Year 1 Next Steps</div><ul>';
-    if(topCats.length>0){
-        h+='<li><strong>List top EU products first</strong>, focusing on: '+topCatNames+'. <em style="color:#64b5f6">(We can help with the listing and translation)</em></li>';
-    }
+    if(topCats.length>0)h+='<li><strong>List top EU products first</strong>, focusing on: '+topCatNames+'. <em style="color:#64b5f6">(We can help with the listing and translation)</em></li>';
     h+='<li><strong>Confirm VAT registration and compliance</strong> for Poland.</li>';
     h+='<li><strong>Plan promotional calendar</strong>: Prime Day, Black Friday, Polish Independence Day sales.';
     if(sigDeals.length>0)h+=' Use coupons and Lightning Deals regularly.';
     h+=' <em style="color:#4caf50;font-weight:600">Deals are free of charge in Poland.</em></li>';
-    if(feeSm){
-        if(feeSm.plCheaper){
-            h+='<li><strong>Stock inventory in Poland (FBA Local)</strong> — saves ~'+formatCurrency(Math.abs(feeSm.compDiff))+' vs EFN.</li>';
-        }else{
-            h+='<li><strong>Evaluate fulfillment carefully.</strong> EFN currently cheaper, but FBA Local offers faster delivery. Consider hybrid approach.</li>';
-        }
-    }else{
-        h+='<li><strong>Decide fulfillment strategy</strong>: FBA Local vs EFN. Upload fee data for comparison.</li>';
-    }
+    if(feeSm){if(feeSm.plCheaper)h+='<li><strong>Stock inventory in Poland (FBA Local)</strong> — saves ~'+formatCurrency(Math.abs(feeSm.compDiff))+' vs EFN.</li>';else h+='<li><strong>Evaluate fulfillment carefully.</strong> EFN currently cheaper, but FBA Local offers faster delivery. Consider hybrid approach.</li>'}else h+='<li><strong>Decide fulfillment strategy</strong>: FBA Local vs EFN. Upload fee data for comparison.</li>';
     h+='<li><strong>Optimize listings for Polish market</strong>: translate titles, bullets, descriptions. Use Polish keywords. <em style="color:#64b5f6">(We can analyse your listings and provide you with suggestions)</em></li>';
-    if(s.totalPlGmsYear1>100000){
-        h+='<li><strong>Invest in Sponsored Products</strong> in Poland — projected GMS of '+formatCurrency(s.totalPlGmsYear1)+' shows significant upside. <em style="color:#64b5f6">We offer free ads credit to support sellers growth and have more visibility (On invitation only).</em></li>';
-    }else if(s.totalPlGmsYear1>0){
-        h+='<li><strong>Consider Sponsored Products</strong> in Poland — projected GMS of '+formatCurrency(s.totalPlGmsYear1)+' provides growth opportunity. <em style="color:#64b5f6">We offer free ads credit to support sellers grow and have more visibility (On invitation only).</em></li>';
-    }
+    if(s.totalPlGmsYear1>100000)h+='<li><strong>Invest in Sponsored Products</strong> in Poland — projected GMS of '+formatCurrency(s.totalPlGmsYear1)+' shows significant upside. <em style="color:#64b5f6">We offer free ads credit to support sellers growth and have more visibility (On invitation only).</em></li>';
+    else if(s.totalPlGmsYear1>0)h+='<li><strong>Consider Sponsored Products</strong> in Poland — projected GMS of '+formatCurrency(s.totalPlGmsYear1)+' provides growth opportunity. <em style="color:#64b5f6">We offer free ads credit to support sellers grow and have more visibility (On invitation only).</em></li>';
     h+='<li><strong>Monitor performance weekly</strong> for first 90 days. Track conversion, returns, ACOS.</li>';
     h+='</ul></div>';
     h+='</div>';
@@ -704,25 +708,22 @@ function showError(msg){document.getElementById('errorText').textContent=msg;doc
 function updateDebugSection(){document.getElementById('debugSection').innerHTML='<pre>'+debugLog.join('\n')+'</pre>'}
 
 // ============================================
-// CALCULATION ENGINE (NEW RAMP LOGIC)
+// CALCULATION ENGINE
 // ============================================
 function calculatePLOpportunity(mid,rampRateInput){
     var mCatYoY={},plCatYoY={},catName={};
     categoryGrowthData.forEach(function(r){var mkt=getMarketplaceCode(r.marketplace_name);var cat=normCat(r.sf_primary_category);if(!mkt||!cat)return;if(!catName[cat])catName[cat]=r.sf_primary_category.trim();var k=mkt+'|'+cat;if(!mCatYoY[k])mCatYoY[k]={gmsYoY:r.net_ordered_gms_yoy,unitsYoY:r.net_ordered_units_yoy,gmsTTM:r.net_ordered_gms_ttm};else mCatYoY[k].gmsTTM+=r.net_ordered_gms_ttm;if(mkt==='PL'&&!plCatYoY[cat])plCatYoY[cat]={gmsYoY:r.net_ordered_gms_yoy,unitsYoY:r.net_ordered_units_yoy}});
-   var sf=sellerCategoryData.filter(function(r){return String(r.seller_id||r.merchant_customer_id||r.merchant_id||'').split('.')[0]===mid});
-if(sf.length===0)return{error:'No data for '+mid,summary:null,byCategory:[],topAsins:[],roadmap:'',notes:[]};
-var merchantName='';
-sf.forEach(function(r){if(!merchantName&&(r.merchant_name||r.merchantname))merchantName=String(r.merchant_name||r.merchantname||'').trim()});
+    var sf=sellerCategoryData.filter(function(r){return String(r.seller_id||r.merchant_customer_id||r.merchant_id||'').split('.')[0]===mid});
+    if(sf.length===0)return{error:'No data for '+mid,summary:null,byCategory:[],topAsins:[],roadmap:'',notes:[]};
+    var merchantName='';
+    sf.forEach(function(r){if(!merchantName&&(r.merchant_name||r.merchantname))merchantName=String(r.merchant_name||r.merchantname||'').trim()});
     var sd={},cats=new Set();
     sf.forEach(function(r){var mkt=getMarketplaceCode(r.marketplace_id||r.marketplace||'');var cat=normCat(r.sf_primary_category||r.category_description||'');if(!mkt||!cat)return;if(!catName[cat])catName[cat]=(r.sf_primary_category||r.category_description||'').trim();cats.add(cat);var k=mkt+'|'+cat;var gms=parseMoneyValue(r.net_ordered_gms_2025||r.net_ordered_gms||r.gms||r.net_ordered_gms_ttm||0);var units=parseNumberValue(r.net_ordered_units_2025||r.net_ordered_units||r.units||r.net_ordered_units_ttm||0);var rawY=r.yoy_gms_growth_pct||r.yoy_gms_growth||r.gms_yoy||r.net_ordered_gms_yoy||'';var md=mCatYoY[mkt+'|'+cat];var mY=md?md.gmsYoY:null;var yr=parseSellerYoY(rawY,mY);if(!sd[k])sd[k]={gms:0,units:0,yoyGms:yr.value,isNew:yr.isNewSeller};sd[k].gms+=gms;sd[k].units+=units});
     var euGms={},euUnits={},eu9Total=0;
     Object.keys(sd).forEach(function(k){var p=k.split('|'),mkt=p[0],cat=p[1];if(!euGms[cat]){euGms[cat]=0;euUnits[cat]=0}euGms[cat]+=sd[k].gms;euUnits[cat]+=sd[k].units;if(mkt!=='PL')eu9Total+=sd[k].gms});
 
-    // ============================================
-    // NEW: Compute size factor and ramp multiplier
-    // ============================================
-    var sizeFactor = computeSizeFactor(eu9Total);
-    var rampMultiplier = rampRateInput; // UI value IS the multiplier (default 1.0)
+    var sizeFactor=computeSizeFactor(eu9Total);
+    var rampMultiplier=rampRateInput;
     log('Seller '+mid+': EU9 GMS = '+formatCurrency(eu9Total)+' | Size tier: '+getSizeTierLabel(eu9Total)+' (factor: '+sizeFactor.toFixed(1)+') | Ramp multiplier: '+rampMultiplier.toFixed(2)+'×');
 
     var catDetails=[],plGms={},plUnits={};
@@ -741,57 +742,31 @@ sf.forEach(function(r){if(!merchantName&&(r.merchant_name||r.merchantname))merch
         if(anch.isNew)d.notes.push('New seller');
         d.opf=computeOPF(anch.sy,anch.my);d.expectedPlYoy=d.plMarketYoy*d.opf;
 
-        // ============================================
-        // NEW: Per-category ramp rate calculation
-        // ============================================
-        var anchor = anch.mkt;
-        var steadyShare = (PL_RELATIVE_SHARE[anchor] !== undefined) ? PL_RELATIVE_SHARE[anchor] : PL_RELATIVE_SHARE_DEFAULT;
-        var year1ShareVsAnchor = steadyShare * sizeFactor;
+        var anchor=anch.mkt;
+        var steadyShare=(PL_RELATIVE_SHARE[anchor]!==undefined)?PL_RELATIVE_SHARE[anchor]:PL_RELATIVE_SHARE_DEFAULT;
+        var year1ShareVsAnchor=steadyShare*sizeFactor;
+        if(year1ShareVsAnchor<0.01)year1ShareVsAnchor=0.01;
+        if(year1ShareVsAnchor>0.50)year1ShareVsAnchor=0.50;
 
-        // Clamp year1ShareVsAnchor
-        if (year1ShareVsAnchor < 0.01) year1ShareVsAnchor = 0.01;
-        if (year1ShareVsAnchor > 0.50) year1ShareVsAnchor = 0.50;
+        var anchorGms=anch.gms||0;
+        var euBaselineGms=d.euBaselineGms;
+        var baseRampCat=0;
+        if(euBaselineGms>0&&anchorGms>0)baseRampCat=(anchorGms*year1ShareVsAnchor)/euBaselineGms;
+        var rampRateCat=baseRampCat*rampMultiplier;
+        if(rampRateCat<0.01)rampRateCat=0.01;
+        if(rampRateCat>0.30)rampRateCat=0.30;
 
-        var anchorGms = anch.gms || 0;
-        var euBaselineGms = d.euBaselineGms;
-
-        var baseRampCat = 0;
-        if (euBaselineGms > 0 && anchorGms > 0) {
-            baseRampCat = (anchorGms * year1ShareVsAnchor) / euBaselineGms;
-        }
-
-        // Apply global multiplier from UI
-        var rampRateCat = baseRampCat * rampMultiplier;
-
-        // Final clamp (safety)
-        if (rampRateCat < 0.01) rampRateCat = 0.01;
-        if (rampRateCat > 0.30) rampRateCat = 0.30;
-
-        // Store for debugging / export
-        d.rampRateCat = rampRateCat;
-        d.anchorGms = anchorGms;
-        d.steadyShare = steadyShare;
-        d.year1ShareVsAnchor = year1ShareVsAnchor;
-
+        d.rampRateCat=rampRateCat;d.anchorGms=anchorGms;d.steadyShare=steadyShare;d.year1ShareVsAnchor=year1ShareVsAnchor;
         log('  Cat ['+cat+']: anchor='+anchor+' | steadyShare='+(steadyShare*100).toFixed(1)+'% | sizeFactor='+sizeFactor.toFixed(1)+' | y1Share='+(year1ShareVsAnchor*100).toFixed(2)+'% | anchorGms=$'+anchorGms.toFixed(0)+' | euBase=$'+euBaselineGms.toFixed(0)+' | baseRamp='+(baseRampCat*100).toFixed(2)+'% | finalRamp='+(rampRateCat*100).toFixed(2)+'%');
 
-        // NEW: Use per-category ramp rate
-        d.plGmsYear1 = d.euBaselineGms * rampRateCat * (1 + d.expectedPlYoy);
-        d.plUnitsYear1 = d.euBaselineUnits * rampRateCat * (1 + d.expectedPlYoy);
-
+        d.plGmsYear1=d.euBaselineGms*rampRateCat*(1+d.expectedPlYoy);
+        d.plUnitsYear1=d.euBaselineUnits*rampRateCat*(1+d.expectedPlYoy);
         plGms[cat]=d.plGmsYear1;plUnits[cat]=d.plUnitsYear1;catDetails.push(d);
     });
 
     var tPlGms=0,tPlUnits=0;Object.keys(plGms).forEach(function(k){tPlGms+=plGms[k]});Object.keys(plUnits).forEach(function(k){tPlUnits+=plUnits[k]});
-
-    // Compute weighted average ramp rate
     var rampWeightedNum=0,rampWeightedDen=0;
-    catDetails.forEach(function(c){
-        if(c.euBaselineGms>0&&c.rampRateCat!=null){
-            rampWeightedNum+=c.rampRateCat*c.euBaselineGms;
-            rampWeightedDen+=c.euBaselineGms;
-        }
-    });
+    catDetails.forEach(function(c){if(c.euBaselineGms>0&&c.rampRateCat!=null){rampWeightedNum+=c.rampRateCat*c.euBaselineGms;rampWeightedDen+=c.euBaselineGms}});
     var rampRateWeighted=rampWeightedDen>0?rampWeightedNum/rampWeightedDen:null;
     log('Seller '+mid+': Weighted avg ramp = '+(rampRateWeighted!==null?(rampRateWeighted*100).toFixed(2)+'%':'N/A'));
 
@@ -810,8 +785,8 @@ sf.forEach(function(r){if(!merchantName&&(r.merchant_name||r.merchantname))merch
 function displayMultiSellerResults(mids){
     var tc=document.getElementById('sellerTabsCard'),ts=document.getElementById('sellerTabs'),rc=document.getElementById('sellerResultsContainer');
     if(mids.length>1){tc.style.display='block';ts.innerHTML='';mids.forEach(function(mid,idx){var tab=document.createElement('button');tab.className='seller-tab'+(idx===0?' active':'');tab.setAttribute('data-seller',mid);var r=allSellerResults[mid];var gt=r&&r.summary?' — '+formatCurrency(r.summary.totalPlGmsYear1):'';
-var mn=r&&r.summary&&r.summary.merchantName?' ('+r.summary.merchantName+')':'';
-tab.textContent='🏪 '+mid+mn+gt;tab.onclick=function(){switchToSeller(mid)};ts.appendChild(tab)})}else tc.style.display='none';
+    var mn=r&&r.summary&&r.summary.merchantName?' ('+r.summary.merchantName+')':'';
+    tab.textContent='🏪 '+mid+mn+gt;tab.onclick=function(){switchToSeller(mid)};ts.appendChild(tab)})}else tc.style.display='none';
     rc.innerHTML='';mids.forEach(function(mid,idx){var panel=buildSellerPanel(mid,allSellerResults[mid]);panel.id='sellerPanel_'+mid;panel.style.display=idx===0?'block':'none';rc.appendChild(panel)});
     currentDisplayedSeller=mids[0];
     mids.forEach(function(mid){if(feeStates[mid])renderFeeTable(mid)});
@@ -827,10 +802,8 @@ function getRampBadgeClass(ramp){
 function buildSellerPanel(mid,results){
     var container=document.createElement('div');
     if(results.error){container.innerHTML='<div class="card"><h2>⚠️ Seller '+mid+'</h2><p style="color:#e57373;">'+results.error+'</p></div>';return container}
-    // NARRATIVE SUMMARY
     var dispName=results.summary.merchantName?' — '+escapeHtml(results.summary.merchantName):'';
-container.innerHTML+='<div class="card"><h2>📊 Summary & Roadmap — '+mid+dispName+'</h2>'+buildNarrativeSummary(mid,results)+'</div>';
-    // CATEGORY TABLE (UPDATED with Ramp % column)
+    container.innerHTML+='<div class="card"><h2>📊 Summary & Roadmap — '+mid+dispName+'</h2>'+buildNarrativeSummary(mid,results)+'</div>';
     var ch='<div class="card"><h2>📦 Category Breakdown</h2><p style="color:#64b5f6;margin-bottom:10px">🆕 = New seller | 📊 = Deals significant | Ramp = per-category ramp rate</p><div class="table-container"><table><thead><tr><th>Category</th><th>Anchor</th><th>Steady Share</th><th>Ramp %</th><th>Seller YoY</th><th>Market YoY</th><th>PL Mkt YoY</th><th>OPF</th><th>Exp PL YoY</th><th>EU Baseline</th><th>Anchor GMS</th><th>PL Year 1</th><th>Deals %</th><th>Notes</th></tr></thead><tbody>';
     results.byCategory.sort(function(a,b){return b.plGmsYear1-a.plGmsYear1}).forEach(function(c){
         var yd=c.sellerYoyAnchor!==null?formatPercent(c.sellerYoyAnchor):'N/A';if(c.sellerYoyIsNew)yd+=' <span class="new-seller-badge">🆕</span>';
@@ -842,13 +815,9 @@ container.innerHTML+='<div class="card"><h2>📊 Summary & Roadmap — '+mid+dis
         ch+='<tr><td>'+c.category+'</td><td>'+(c.anchorMarketplace||'N/A')+'</td><td>'+ssDisp+'</td><td>'+rampDisp+'</td><td>'+yd+'</td><td>'+(c.marketYoyAnchor!==null?formatPercent(c.marketYoyAnchor):'N/A')+'</td><td>'+(c.plMarketYoy!==null?formatPercent(c.plMarketYoy):'N/A')+'</td><td>'+(c.opf!==null?c.opf.toFixed(2):'N/A')+'</td><td>'+(c.expectedPlYoy!==null?formatPercent(c.expectedPlYoy):'N/A')+'</td><td>'+formatCurrency(c.euBaselineGms)+'</td><td>'+ancGmsDisp+'</td><td style="color:#4caf50;font-weight:bold">'+formatCurrency(c.plGmsYear1)+'</td><td>'+dd+'</td><td><span class="status '+nc+'">'+(c.notes.length>0?c.notes.join('; '):'OK')+'</span></td></tr>';
     });
     ch+='</tbody></table></div></div>';container.innerHTML+=ch;
-    // TOP ASINs
-    if(results.topAsins&&results.topAsins.length>0){var ah='<div class="card"><h2>🏆 Top 20 ASINs for PL Launch</h2><div class="table-container"><table><thead><tr><th>#</th><th>ASIN</th><th>Category</th><th>EU GMS</th><th>EU Units</th><th>PL Mkt YoY</th></tr></thead><tbody>';results.topAsins.forEach(function(a,i){
-    ah+='<tr><td>'+(i+1)+'</td><td><strong>'+a.asin+'</strong></td><td>'+a.category+'</td><td>'+formatCurrency(a.euGms)+'</td><td>'+formatNumber(a.euUnits)+'</td><td>'+(a.plMarketYoy!==null?formatPercent(a.plMarketYoy):'N/A')+'</td></tr>'});ah+='</tbody></table></div></div>';container.innerHTML+=ah}
+    if(results.topAsins&&results.topAsins.length>0){var ah='<div class="card"><h2>🏆 Top 20 ASINs for PL Launch</h2><div class="table-container"><table><thead><tr><th>#</th><th>ASIN</th><th>Category</th><th>EU GMS</th><th>EU Units</th><th>PL Mkt YoY</th></tr></thead><tbody>';results.topAsins.forEach(function(a,i){ah+='<tr><td>'+(i+1)+'</td><td><strong>'+a.asin+'</strong></td><td>'+a.category+'</td><td>'+formatCurrency(a.euGms)+'</td><td>'+formatNumber(a.euUnits)+'</td><td>'+(a.plMarketYoy!==null?formatPercent(a.plMarketYoy):'N/A')+'</td></tr>'});ah+='</tbody></table></div></div>';container.innerHTML+=ah}
     else container.innerHTML+='<div class="card"><h2>🏆 Top ASINs</h2><div class="no-data-message"><div class="icon">📦</div><h3>No ASIN Data</h3><p>Upload the ASIN+Fee file.</p></div></div>';
-    // FEE PANEL
     container.innerHTML+=buildFeePanel(mid,results.feeEstimate);
-    // NOTES
     var nh='<div class="card"><h2>⚠️ Notes</h2><div style="background:rgba(0,0,0,0.3);border-radius:10px;padding:20px"><ul style="list-style:none;padding:0">';results.notes.forEach(function(n){nh+='<li style="padding:6px 0;padding-left:20px;position:relative"><span style="position:absolute;left:5px;color:#ff9900">•</span>'+n+'</li>'});nh+='</ul></div></div>';container.innerHTML+=nh;
     return container;
 }
@@ -864,41 +833,21 @@ function loadTrackingStats(){
     if(!url){badge.textContent='Not configured';return}
     badge.textContent='Loading...';
     fetch(url,{redirect:'follow'})
-    .then(function(r){
-        if(!r.ok)throw new Error('HTTP '+r.status);
-        return r.json();
-    })
+    .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})
     .then(function(data){
-        if(data&&data.status==='success'){
-            badge.textContent=data.uniqueSellers+' unique sellers | '+data.totalEntries+' analyses';
-            log('Tracking stats loaded: '+data.totalEntries+' entries, '+data.uniqueSellers+' sellers');
-        }else{
-            badge.textContent='Connected ('+((data&&data.message)||'unknown')+')';
-            log('Tracking stats response: '+JSON.stringify(data));
-        }
+        if(data&&data.status==='success')badge.textContent=data.uniqueSellers+' unique sellers | '+data.totalEntries+' analyses';
+        else badge.textContent='Connected ('+((data&&data.message)||'unknown')+')';
     })
-    .catch(function(err){
-        badge.textContent='Connected (stats unavailable)';
-        log('Tracking stats fetch issue (may be CORS): '+err.message);
-    });
+    .catch(function(err){badge.textContent='Connected (stats unavailable)';log('Tracking stats fetch issue: '+err.message)});
 }
 
-function showTrackingStatus(msg,cls){
-    var el=document.getElementById('trackingStatus');
-    el.style.display='block';
-    el.className=cls;
-    el.innerHTML=msg;
-}
+function showTrackingStatus(msg,cls){var el=document.getElementById('trackingStatus');el.style.display='block';el.className=cls;el.innerHTML=msg}
 
 function trackAnalysisToSheet(mids){
     var url=getTrackingUrl();
-    if(!url){
-        showTrackingStatus('⚠️ No tracking URL configured. Results not logged.','tracking-pending');
-        return;
-    }
+    if(!url){showTrackingStatus('⚠️ No tracking URL configured. Results not logged.','tracking-pending');return}
     var analyst=(document.getElementById('analystName').value||'').trim()||'Unknown';
     var sellers=[];
-
     mids.forEach(function(mid){
         var r=allSellerResults[mid];if(!r||!r.summary)return;var s=r.summary;
         var topCats=r.byCategory.filter(function(c){return c.plGmsYear1>0}).sort(function(a,b){return b.plGmsYear1-a.plGmsYear1});
@@ -934,19 +883,11 @@ function trackAnalysisToSheet(mids){
             notes:r.notes?r.notes.join('; '):''
         });
     });
-
     if(sellers.length===0)return;
-
     var payload=JSON.stringify({analyst:analyst,sellers:sellers});
     log('Tracking payload size: '+payload.length+' bytes for '+sellers.length+' sellers');
     showTrackingStatus('⏳ Logging '+sellers.length+' seller(s) to Google Sheet...','tracking-pending');
-
-    // SINGLE request only — no retry to prevent duplicates
-    fetch(url,{
-        method:'POST',
-        body:payload,
-        mode:'no-cors'
-    })
+    fetch(url,{method:'POST',body:payload,mode:'no-cors'})
     .then(function(){
         showTrackingStatus('✅ '+sellers.length+' seller(s) logged successfully! Analyst: '+analyst,'tracking-success');
         log('Tracking sent successfully (no-cors)');
