@@ -644,13 +644,18 @@ function buildNarrativeSummary(mid,results){
     h+='<p>Based on your current EU performance, your projected <span class="ns-stat">Year 1 PL GMS is '+formatCurrency(s.totalPlGmsYear1)+'</span>.';
     if(s.upliftPct!==null)h+=' This represents an <span class="ns-stat">uplift of '+formatPercent(s.upliftPct)+'</span> on top of your existing EU business.';
     h+='</p>';
+    if(s.ceeSavingsTotal>0){
+        var deUnitsTotal=0;if(results.ceeByCat)results.ceeByCat.forEach(function(c){deUnitsTotal+=c.deUnits});
+        h+='<div class="ns-highlight-box green" style="margin:12px 0">';
+        h+='<p>💶 Based on the <span class="ns-stat">'+formatNumber(deUnitsTotal)+'</span> units you sold in Germany last year, if you register for <strong>CEE</strong>, you will save up to <span class="ns-stat">€'+s.ceeSavingsTotal.toFixed(2)+'</span> of FBA fees in Germany. <a href="https://sellercentral-europe.amazon.com/help/hub/reference/G202030150" target="_blank" style="color:#64b5f6;text-decoration:underline">Learn more about CEE →</a></p>';
+        h+='</div>';
+    }
     if(topCats.length>0)h+='<p>Your top projected categories in Poland are: <strong>'+topCatNames+'</strong>.</p>';
     h+='<div class="ns-kpi-row">';
     h+='<div class="ns-kpi highlight"><div class="kv">'+formatCurrency(s.totalPlGmsYear1)+'</div><div class="kl">PL Year 1 GMS</div></div>';
     h+='<div class="ns-kpi highlight"><div class="kv">'+(s.upliftPct!==null?formatPercent(s.upliftPct):'N/A')+'</div><div class="kl">🚀 Uplift</div></div>';
     h+='<div class="ns-kpi"><div class="kv">'+formatNumber(s.totalPlUnitsYear1)+'</div><div class="kl">PL Units</div></div>';
-    h+='<div class="ns-kpi"><div class="kv">'+formatCurrency(s.eu9Gms2025)+'</div><div class="kl">Current EU GMS</div></div>';
-    h+='<div class="ns-kpi"><div class="kv">'+formatCurrency(s.eu9GmsNextWithPl)+'</div><div class="kl">EU + PL Projected</div></div>';
+    if(s.ceeSavingsTotal>0)h+='<div class="ns-kpi" style="background:rgba(76,175,80,0.2);border-color:rgba(76,175,80,0.4)"><div class="kv" style="color:#81c784">€'+s.ceeSavingsTotal.toFixed(2)+'</div><div class="kl">💶 CEE Savings</div></div>';
     h+='<div class="ns-kpi"><div class="kv">'+formatCurrency(s.incrementalPlGms)+'</div><div class="kl">Incremental PL</div></div>';
     h+='</div></div>';
     h+='<div class="ns-section"><div class="ns-title">B. Cost & Fees Overview</div>';
@@ -775,8 +780,22 @@ function calculatePLOpportunity(mid,rampRateInput){
     var asinItems=extractAsinDataForSeller(mid);var topAsins=[];
     if(asinItems.length>0){var agg={};asinItems.forEach(function(it){if(!agg[it.asin])agg[it.asin]={asin:it.asin,category:it.category,gms:0,units:0};agg[it.asin].gms+=it.gms;agg[it.asin].units+=it.units});topAsins=Object.values(agg).map(function(d){var py=plCatYoY[d.category]?plCatYoY[d.category].gmsYoY:0;return{asin:d.asin,category:d.category,euGms:d.gms,euUnits:d.units,plMarketYoy:py,score:d.gms*(1+(py||0))}}).sort(function(a,b){return b.score-a.score}).slice(0,20)}
     var feeEst=extractFeeDataForSeller(mid);
-    var notes=['Ramp multiplier: '+rampRateInput.toFixed(1)+'×','Size tier: '+getSizeTierLabel(eu9Total)+' (factor: '+sizeFactor.toFixed(1)+')','Wtd avg ramp: '+(rampRateWeighted!==null?(rampRateWeighted*100).toFixed(2)+'%':'N/A'),'OPF: ['+OPF_MIN+','+OPF_MAX+']','Categories: '+cats.size,asinItems.length>0?'ASINs: '+asinItems.length:'No ASIN data',feeEst?'Fee ASINs: '+feeEst.items.length:'No fee data'].filter(Boolean);
-    return{summary:{merchantId:mid,merchantName:merchantName,totalPlGmsYear1:tPlGms,totalPlUnitsYear1:tPlUnits,eu9Gms2025:eu9Total,eu9GmsNextNoPl:eu9Next,eu9GmsNextWithPl:eu9WithPl,incrementalPlGms:tPlGms,upliftPct:uplift,rampRate:rampRateInput,rampRateWeighted:rampRateWeighted,sizeFactor:sizeFactor,sizeTier:getSizeTierLabel(eu9Total)},byCategory:catDetails,topAsins:topAsins,feeEstimate:feeEst,notes:notes};
+
+    // CEE Savings: sum of DE units per category × €0.26
+    var ceeSavingsTotal=0;
+    var ceeByCat=[];
+    Array.from(cats).forEach(function(cat){
+        var deKey='DE|'+cat;
+        var deUnits=sd[deKey]?sd[deKey].units:0;
+        var ceeSav=deUnits*0.26;
+        ceeSavingsTotal+=ceeSav;
+        if(deUnits>0)ceeByCat.push({category:catName[cat]||cat,deUnits:deUnits,ceeSavings:ceeSav});
+    });
+    ceeByCat.sort(function(a,b){return b.ceeSavings-a.ceeSavings});
+    log('Seller '+mid+': CEE Savings = €'+ceeSavingsTotal.toFixed(2)+' ('+ceeByCat.length+' categories with DE units)');
+
+    var notes=['Ramp multiplier: '+rampRateInput.toFixed(1)+'×','Size tier: '+getSizeTierLabel(eu9Total)+' (factor: '+sizeFactor.toFixed(1)+')','Wtd avg ramp: '+(rampRateWeighted!==null?(rampRateWeighted*100).toFixed(2)+'%':'N/A'),'OPF: ['+OPF_MIN+','+OPF_MAX+']','Categories: '+cats.size,asinItems.length>0?'ASINs: '+asinItems.length:'No ASIN data',feeEst?'Fee ASINs: '+feeEst.items.length:'No fee data','CEE Savings: €'+ceeSavingsTotal.toFixed(2)].filter(Boolean);
+    return{summary:{merchantId:mid,merchantName:merchantName,totalPlGmsYear1:tPlGms,totalPlUnitsYear1:tPlUnits,eu9Gms2025:eu9Total,eu9GmsNextNoPl:eu9Next,eu9GmsNextWithPl:eu9WithPl,incrementalPlGms:tPlGms,upliftPct:uplift,rampRate:rampRateInput,rampRateWeighted:rampRateWeighted,sizeFactor:sizeFactor,sizeTier:getSizeTierLabel(eu9Total),ceeSavingsTotal:ceeSavingsTotal},byCategory:catDetails,topAsins:topAsins,feeEstimate:feeEst,ceeByCat:ceeByCat,notes:notes};
 }
 
 // ============================================
@@ -815,6 +834,27 @@ function buildSellerPanel(mid,results){
         ch+='<tr><td>'+c.category+'</td><td>'+(c.anchorMarketplace||'N/A')+'</td><td>'+ssDisp+'</td><td>'+rampDisp+'</td><td>'+yd+'</td><td>'+(c.marketYoyAnchor!==null?formatPercent(c.marketYoyAnchor):'N/A')+'</td><td>'+(c.plMarketYoy!==null?formatPercent(c.plMarketYoy):'N/A')+'</td><td>'+(c.opf!==null?c.opf.toFixed(2):'N/A')+'</td><td>'+(c.expectedPlYoy!==null?formatPercent(c.expectedPlYoy):'N/A')+'</td><td>'+formatCurrency(c.euBaselineGms)+'</td><td>'+ancGmsDisp+'</td><td style="color:#4caf50;font-weight:bold">'+formatCurrency(c.plGmsYear1)+'</td><td>'+dd+'</td><td><span class="status '+nc+'">'+(c.notes.length>0?c.notes.join('; '):'OK')+'</span></td></tr>';
     });
     ch+='</tbody></table></div></div>';container.innerHTML+=ch;
+
+    // CEE Savings Breakdown Card
+    if(results.ceeByCat&&results.ceeByCat.length>0&&results.summary.ceeSavingsTotal>0){
+        var ceeH='<div class="card"><h2>💶 CEE Savings Breakdown</h2>';
+        ceeH+='<p style="color:#81c784;margin-bottom:15px">Estimated savings from registering for <strong>Central Europe Expansion (CEE)</strong> — €0.26 per unit sold in Germany.</p>';
+        ceeH+='<div class="ns-kpi-row" style="margin-bottom:20px">';
+        var deUnitsTotal=0;results.ceeByCat.forEach(function(c){deUnitsTotal+=c.deUnits});
+        ceeH+='<div class="ns-kpi" style="background:rgba(76,175,80,0.2);border-color:rgba(76,175,80,0.4)"><div class="kv" style="color:#81c784">€'+results.summary.ceeSavingsTotal.toFixed(2)+'</div><div class="kl">💶 Total CEE Savings</div></div>';
+        ceeH+='<div class="ns-kpi"><div class="kv">'+formatNumber(deUnitsTotal)+'</div><div class="kl">🇩🇪 DE Units (Total)</div></div>';
+        ceeH+='<div class="ns-kpi"><div class="kv">'+results.ceeByCat.length+'</div><div class="kl">Categories</div></div>';
+        ceeH+='</div>';
+        ceeH+='<div class="table-container"><table><thead><tr><th>Category</th><th>DE Units</th><th>CEE Savings (€0.26/unit)</th></tr></thead><tbody>';
+        results.ceeByCat.forEach(function(c){
+            ceeH+='<tr><td>'+escapeHtml(c.category)+'</td><td>'+formatNumber(c.deUnits)+'</td><td style="color:#81c784;font-weight:bold">€'+c.ceeSavings.toFixed(2)+'</td></tr>';
+        });
+        ceeH+='</tbody></table></div>';
+        ceeH+='<p style="margin-top:15px;color:#64b5f6;font-size:0.9em">📖 <a href="https://www.sellercentral.amazon.dev/help/hub/reference/G202030150" target="_blank" style="color:#64b5f6;text-decoration:underline">Learn more about CEE on Seller Central →</a></p>';
+        ceeH+='</div>';
+        container.innerHTML+=ceeH;
+    }
+
     if(results.topAsins&&results.topAsins.length>0){var ah='<div class="card"><h2>🏆 Top 20 ASINs for PL Launch</h2><div class="table-container"><table><thead><tr><th>#</th><th>ASIN</th><th>Category</th><th>EU GMS</th><th>EU Units</th><th>PL Mkt YoY</th></tr></thead><tbody>';results.topAsins.forEach(function(a,i){ah+='<tr><td>'+(i+1)+'</td><td><strong>'+a.asin+'</strong></td><td>'+a.category+'</td><td>'+formatCurrency(a.euGms)+'</td><td>'+formatNumber(a.euUnits)+'</td><td>'+(a.plMarketYoy!==null?formatPercent(a.plMarketYoy):'N/A')+'</td></tr>'});ah+='</tbody></table></div></div>';container.innerHTML+=ah}
     else container.innerHTML+='<div class="card"><h2>🏆 Top ASINs</h2><div class="no-data-message"><div class="icon">📦</div><h3>No ASIN Data</h3><p>Upload the ASIN+Fee file.</p></div></div>';
     container.innerHTML+=buildFeePanel(mid,results.feeEstimate);
@@ -880,6 +920,7 @@ function trackAnalysisToSheet(mids){
             efnWins:feeSm?feeSm.efnWins:0,
             significantDealsCategories:sigDeals.join(', '),
             newSellerEntries:newSellers,
+            ceeSavingsTotal:s.ceeSavingsTotal?'€'+s.ceeSavingsTotal.toFixed(2):'€0.00',
             notes:r.notes?r.notes.join('; '):''
         });
     });
